@@ -75,8 +75,9 @@ def process_video(job_id: str, input_path: str, output_path: str, model_path: st
 
         fps = cap.get(cv2.CAP_PROP_FPS) or 30
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        out_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)) // 2
-        out_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)) // 2
+
+        out_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)/2)
+        out_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)/2)
 
         jobs[job_id]["total"] = total_frames
 
@@ -154,7 +155,7 @@ async def upload_video(file: UploadFile = File(...)):
 
 
 @app.post("/process/{job_id}")
-async def start_processing(job_id: str, model: str = "lite"):
+async def start_processing(job_id: str, model: str = "full"):
     job = jobs.get(job_id)
     if not job:
         return JSONResponse({"error": "Job nicht gefunden"}, status_code=404)
