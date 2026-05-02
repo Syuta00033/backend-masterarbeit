@@ -20,6 +20,8 @@ from mediapipe.tasks.python.vision import drawing_utils
 from mediapipe.tasks.python.vision import drawing_styles
 from mediapipe.tasks.python import vision
 
+from kick_analyzer import KickAnalyzer
+
 app = FastAPI()
 
 app.add_middleware(
@@ -89,6 +91,7 @@ def process_video(job_id: str, input_path: str, output_path: str, model_path: st
             running_mode=VisionRunningMode.VIDEO,
         )
 
+        kick_analyzer = KickAnalyzer()
         frame_index = 0
         with PoseLandmarker.create_from_options(options) as landmarker:
             while cap.isOpened():
@@ -105,20 +108,7 @@ def process_video(job_id: str, input_path: str, output_path: str, model_path: st
                 result = landmarker.detect_for_video(mp_image, timestamp_ms)
 
                 annotated = draw_landmarks_on_image(rgb_frame, result)
-
-
-                # Detect left knee test 
-                if result.pose_landmarks:
-                    left_knee = result.pose_landmarks[0][25]
-                    px = int(left_knee.x * out_w)
-                    py = int(left_knee.y * out_h)
-                    text = f"Linkes Knie: ({px}, {py})"
-                    test2 = f"Linkes Knie: ({left_knee.x:.2f}, {left_knee.y:.2f})"
-                    cv2.putText(annotated, text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX,
-                                0.7, (255, 255, 255), 2, cv2.LINE_AA)
-                    
-                    cv2.putText(annotated, test2, (10, 70), cv2.FONT_HERSHEY_SIMPLEX,
-                                0.7, (255, 255, 255), 2, cv2.LINE_AA)
+                annotated = kick_analyzer.process_frame(result, out_w, out_h, annotated)
 
                 out.write(cv2.cvtColor(annotated, cv2.COLOR_RGB2BGR))
 
