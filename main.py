@@ -1,6 +1,4 @@
 import os
-os.environ["MEDIAPIPE_DISABLE_GPU"] = "1"
-
 import subprocess
 import tempfile
 import uuid
@@ -26,10 +24,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "https://masterarbeit-frontend.vercel.app",
-    ],
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -202,4 +197,12 @@ def download_video(job_id: str):
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    import os
+    base_dir = os.path.dirname(__file__)
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=8000,
+        ssl_keyfile=os.path.join(base_dir, "key.pem"),
+        ssl_certfile=os.path.join(base_dir, "cert.pem"),
+    )
