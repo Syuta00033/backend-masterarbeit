@@ -3,23 +3,28 @@ import numpy as np
 
 
 class KickAnalyzer:
+
+    L_SHOULDER, R_SHOULDER = 11, 12
+    L_HIP, R_HIP = 23, 24
+    L_KNEE, R_KNEE = 25, 26
+    L_ANKLE, R_ANKLE = 27, 28
+
+
     def __init__(self):
         self.phase = "idle"
         self.baseline_hip_y = None
         self.kick_label_frames = 0
         self.phases_log = []
+        self.kicking_side = None  # "left" or "right"
 
     def process_frame(self, result, out_w, out_h, annotated):
-        if not result.pose_landmarks:
+        if not result.pose_world_landmarks:
             return annotated
 
-        hip = (result.pose_landmarks[0][24].x, result.pose_landmarks[0][24].y)
-        knee = (result.pose_landmarks[0][26].x, result.pose_landmarks[0][26].y)
-        ankle = (result.pose_landmarks[0][28].x, result.pose_landmarks[0][28].y)
-        shoulder = (result.pose_landmarks[0][12].x, result.pose_landmarks[0][12].y)
+        wl = result.pose_world_landmarks[0]
 
-        knee_angle = self.calc_angle(hip, knee, ankle)
-        hip_flexion = self.calc_angle(shoulder, hip, knee)
+        self.kicking_side = self._select_side(wl)
+        knee_angle, hip_flexion = self._leg_angles(wl, self.kicking_side)
 
         self.update(knee_angle, hip_flexion, frame_idx=0)
 
@@ -30,20 +35,47 @@ class KickAnalyzer:
                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
         cv2.putText(annotated, f"Hip Flexion: {int(hip_flexion)}", (10, 90),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
-
-
-
-
-        # if left_knee.y < left_hip.y - 0.05 and self.kick_label_frames == 0:
-        #     self.kick_label_frames = 30
-
-        # if self.kick_label_frames > 0:
-        #     cv2.putText(annotated, "Kick erkannt!", (10, 110),
-        #                 cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2, cv2.LINE_AA)
-        #     self.kick_label_frames -= 1
+        cv2.putText(annotated, f"Side: {self.kicking_side}", (10, 120),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
 
         return annotated
+
+
+    # helper methods
+
+    def _landmark(self, landmark):
+        return np.array([landmark.x, landmark.y, landmark.z])
     
+    def _select_side(self, wl):
+        if self.phase != "idle":
+            return self.kicking_side
+
+        left_knee_y = wl[self.L_KNEE].y
+        right_knee_y = wl[self.R_KNEE].y
+
+        if left_knee_y < right_knee_y:
+            self.kicking_side = "left"
+        else:
+            self.kicking_side = "right"
+
+        return self.kicking_side
+    
+    def _leg_angles(self, wl, side):
+        if side == "left":
+            hip = self._landmark(wl[self.L_HIP])
+            knee = self._landmark(wl[self.L_KNEE])
+            ankle = self._landmark(wl[self.L_ANKLE])
+            shoulder = self._landmark(wl[self.L_SHOULDER])
+        else:
+            hip = self._landmark(wl[self.R_HIP])
+            knee = self._landmark(wl[self.R_KNEE])
+            ankle = self._landmark(wl[self.R_ANKLE])
+            shoulder = self._landmark(wl[self.R_SHOULDER])
+
+        knee_angle = self.calc_angle(hip, knee, ankle)
+        hip_flexion = self.calc_angle(shoulder, hip, knee)
+
+        return knee_angle, hip_flexion
 
     def calc_angle(self, a, b, c):
         ba = np.array(a) - np.array(b)

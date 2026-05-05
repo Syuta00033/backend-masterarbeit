@@ -89,6 +89,7 @@ def process_video(job_id: str, input_path: str, output_path: str, model_path: st
 
         kick_analyzer = KickAnalyzer()
         frame_index = 0
+
         with PoseLandmarker.create_from_options(options) as landmarker:
             while cap.isOpened():
                 success, bgr_frame = cap.read()
