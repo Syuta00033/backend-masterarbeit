@@ -105,7 +105,7 @@ def process_video(job_id: str, input_path: str, output_path: str, model_path: st
                 result = landmarker.detect_for_video(mp_image, timestamp_ms)
 
                 annotated = draw_landmarks_on_image(rgb_frame, result)
-                annotated = kick_analyzer.process_frame(result, out_w, out_h, annotated)
+                annotated = kick_analyzer.process_frame(result, out_w, out_h, annotated, frame_index)
 
                 out.write(cv2.cvtColor(annotated, cv2.COLOR_RGB2BGR))
 
@@ -151,7 +151,7 @@ async def upload_video(file: UploadFile = File(...)):
 
 
 @app.post("/process/{job_id}")
-async def start_processing(job_id: str, model: str = "full"):
+async def start_processing(job_id: str, model: str = "lite"):
     job = jobs.get(job_id)
     if not job:
         return JSONResponse({"error": "Job nicht gefunden"}, status_code=404)
