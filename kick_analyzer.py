@@ -12,8 +12,6 @@ class KickAnalyzer:
 
     def __init__(self):
         self.phase = "idle"
-        self.baseline_hip_y = None
-        self.kick_label_frames = 0
         self.phases_log = []
         self.kicking_side = None  # "left" or "right"
         self._kick_start_frame = None
@@ -108,6 +106,8 @@ class KickAnalyzer:
             if knee_angle < 130 and hip_flexion < 130:
                 self.phase = "rechamber"
                 self.phases_log.append(("rechamber", frame_index))
+            if knee_angle > 160 and hip_flexion > 160:
+                self.phase = "idle"
         elif self.phase == "rechamber":
             if knee_angle > 160 and hip_flexion > 160:
                 self.phase = "idle"
