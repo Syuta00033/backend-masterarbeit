@@ -17,7 +17,7 @@ class KickAnalyzer:
         self._kick_start_frame = None
         self.last_kick_duration_frames = None
 
-    def process_frame(self, result, out_w, out_h, annotated, frame_index):
+    def process_frame(self, result, annotated, frame_index):
         if not result.pose_world_landmarks:
             return annotated
 
