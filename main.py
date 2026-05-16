@@ -60,7 +60,7 @@ def draw_landmarks_on_image(rgb_image, detection_result):
     return annotated_image
 
 
-def process_video(job_id: str, input_path: str, output_path: str, model_path: str):
+def process_video(job_id: str, input_path: str, output_path: str, model_path: str, kick_type: str):
     try:
         cap = cv2.VideoCapture(input_path)
         if not cap.isOpened():
@@ -87,7 +87,7 @@ def process_video(job_id: str, input_path: str, output_path: str, model_path: st
             running_mode=VisionRunningMode.VIDEO,
         )
 
-        kick_analyzer = KickAnalyzer()
+        kick_analyzer = KickAnalyzer(kick_type=kick_type)
         frame_index = 0
 
         with PoseLandmarker.create_from_options(options) as landmarker:
@@ -151,7 +151,7 @@ async def upload_video(file: UploadFile = File(...)):
 
 
 @app.post("/process/{job_id}")
-async def start_processing(job_id: str, model: str = "lite"):
+async def start_processing(job_id: str, model: str = "lite", kick_type: str = "ap_chagi"):
     job = jobs.get(job_id)
     if not job:
         return JSONResponse({"error": "Job nicht gefunden"}, status_code=404)
@@ -166,7 +166,7 @@ async def start_processing(job_id: str, model: str = "lite"):
 
     threading.Thread(
         target=process_video,
-        args=(job_id, job["input"], output_path, MODEL_PATHS[model]),
+        args=(job_id, job["input"], output_path, MODEL_PATHS[model], kick_type),
         daemon=True,
     ).start()
 
