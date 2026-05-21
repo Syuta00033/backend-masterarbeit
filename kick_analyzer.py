@@ -29,10 +29,12 @@ class KickAnalyzer:
                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
         cv2.putText(annotated, f"Side: {self.kicking_side}", (10, 120),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
+        cv2.putText(annotated, f"Torso Angle: {int(self.kick.torso_angle)}", (10, 150),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
 
         if self.kick.last_kick_duration_frames is not None:
             cv2.putText(annotated, f"Last Kick: {self.kick.last_kick_duration_frames} frames",
-                        (10, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2, cv2.LINE_AA)
+                        (10, 180), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2, cv2.LINE_AA)
 
         return annotated
 

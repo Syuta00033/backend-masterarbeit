@@ -1,4 +1,5 @@
-from .geometry import leg_angles
+from .geometry import calc_angle, leg_angles
+import numpy as np
 
 
 class ApChagi:
@@ -18,9 +19,12 @@ class ApChagi:
         self.last_kick_duration_frames = None
         self.knee_angle = 0.0
         self.hip_flexion = 0.0
+        self.torso_angle = 0.0
 
     def update(self, wl, kicking_side, frame_index):
         self.knee_angle, self.hip_flexion = leg_angles(wl, kicking_side)
+        print(wl[23])
+        #self.torso_angle = calc_angle(wl[11], wl[23], wl[23] + np.array([0, 1, 0]))  # Schulter-Hüfte-Knie
 
         if self.phase == "idle":
             if self.knee_angle < self.CHAMBER_KNEE_MAX and self.hip_flexion < self.CHAMBER_HIP_MAX:
