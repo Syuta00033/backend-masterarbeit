@@ -1,5 +1,6 @@
 import cv2
 
+from filters import LandmarkSmoother
 from kicks import KICK_CLASSES
 from kicks.geometry import L_KNEE, R_KNEE
 
@@ -11,11 +12,13 @@ class KickAnalyzer:
             raise ValueError(f"Unbekannter Kick-Typ: {kick_type}")
         self.kick = KICK_CLASSES[kick_type]()
         self.kicking_side = None
+        self.smoother = LandmarkSmoother()
 
     def process_frame(self, result, annotated, frame_index):
         if not result.pose_world_landmarks:
             return annotated
 
+        #wl = self.smoother.smooth(result.pose_world_landmarks[0])
         wl = result.pose_world_landmarks[0]
 
         self.kicking_side = self._select_side(wl)
