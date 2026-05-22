@@ -85,6 +85,9 @@ def process_video(job_id: str, input_path: str, output_path: str, model_path: st
         options = PoseLandmarkerOptions(
             base_options=BaseOptions(model_asset_path=model_path),
             running_mode=VisionRunningMode.VIDEO,
+            min_pose_detection_confidence=0.7,
+            min_pose_presence_confidence=0.7,
+            min_tracking_confidence=0.7,
         )
 
         kick_analyzer = KickAnalyzer(kick_type=kick_type)
@@ -113,6 +116,24 @@ def process_video(job_id: str, input_path: str, output_path: str, model_path: st
 
         cap.release()
         out.release()
+
+        result_list = kick_analyzer.kick.evaluate()
+
+
+        txt_path = output_path.replace(".mp4", ".txt")
+        with open(txt_path, "w", encoding="utf-8") as f:
+            f.write(f"Kick-Typ: {kick_type}\n")
+            f.write(f"Kicking Side: {kick_analyzer.kicking_side}\n")
+            f.write(f"Letzte Kick-Dauer: {kick_analyzer.kick.last_kick_duration_frames} Frames\n")
+            f.write(f"FPS: {fps}\n")
+            f.write(f"Gesamt-Frames: {total_frames}\n")
+            f.write("\nPhasen-Verlauf:\n")
+            for phase, frame in kick_analyzer.kick.phases_log:
+                f.write(f"  Frame {frame:>5}: {phase}\n")
+            f.write("\nBewertung:\n")
+            for line in result_list:
+                f.write(f"  {line}\n")
+        print(f"Analyse gespeichert in: {txt_path}")
 
         # OpenCV schreibt mp4v, das Browser nicht abspielen können – in H.264 umkodieren
         h264_path = output_path.replace(".mp4", "_h264.mp4")
