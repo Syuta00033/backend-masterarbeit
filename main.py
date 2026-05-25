@@ -36,6 +36,10 @@ MODEL_PATHS = {
 }
 
 TEMP_DIR = tempfile.gettempdir()
+BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+ANALYSIS_DIR = os.path.join(BACKEND_DIR, "analysis")
+os.makedirs(ANALYSIS_DIR, exist_ok=True)
+
 jobs: dict[str, dict] = {}
 
 BaseOptions = mp.tasks.BaseOptions
@@ -117,10 +121,11 @@ def process_video(job_id: str, input_path: str, output_path: str, model_path: st
         cap.release()
         out.release()
 
+        # Bewertung
         result_list = kick_analyzer.kick.evaluate()
 
 
-        txt_path = output_path.replace(".mp4", ".txt")
+        txt_path = os.path.join(ANALYSIS_DIR, f"{job_id}_analysis.txt")
         with open(txt_path, "w", encoding="utf-8") as f:
             f.write(f"Kick-Typ: {kick_type}\n")
             f.write(f"Kicking Side: {kick_analyzer.kicking_side}\n")
