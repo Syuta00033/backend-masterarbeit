@@ -13,6 +13,7 @@ class ApChagi:
     IDLE_HIP_MIN = 160
 
     KNEE_DROP_TOLERANCE_M = 0.15
+    STANDING_KNEE_MAX = 170
 
     def __init__(self):
         self.phase = "idle"
@@ -26,14 +27,19 @@ class ApChagi:
         self.min_hip_in_chamber = 180.0
         self.min_knee_y = float("inf")
         self.max_knee_y_in_kick = float("-inf")
+        self.standing_knee_angle = 0.0
+        self.max_standing_knee_angle = 0.0
 
         self.torso_angle = 0.0
 
     def update(self, wl, kicking_side, frame_index):
         self.knee_angle, self.hip_flexion = leg_angles(wl, kicking_side)
 
-        knee_idx = L_KNEE if kicking_side == "left" else R_KNEE
-        knee_y = wl[knee_idx].y
+        standing_side = "right" if kicking_side == "left" else "left"
+        self.standing_knee_angle, _ = leg_angles(wl, standing_side)
+
+        kicking_knee_idx = L_KNEE if kicking_side == "left" else R_KNEE
+        knee_y = wl[kicking_knee_idx].y
 
         #self.torso_angle = calc_angle(wl[11], wl[23], wl[23] + np.array([0, 1, 0]))  # Schulter-Hüfte-Knie
 
@@ -66,6 +72,8 @@ class ApChagi:
                 self.min_knee_y = knee_y
             if knee_y > self.max_knee_y_in_kick:
                 self.max_knee_y_in_kick = knee_y
+            if self.standing_knee_angle > self.max_standing_knee_angle:
+                self.max_standing_knee_angle = self.standing_knee_angle
 
             if self.knee_angle < self.CHAMBER_KNEE_MAX and self.hip_flexion < self.CHAMBER_HIP_MAX:
                 self.phase = "rechamber"
@@ -132,6 +140,14 @@ class ApChagi:
             "value": round(knee_drop, 3),
             "feedback": "Knie bleibt auf Höhe während des Kicks." if knee_drop < self.KNEE_DROP_TOLERANCE_M
                         else f"Knie sackt im Kick um {round(knee_drop * 100)} cm ab — die Hüfte sollte die Beugung halten, während das Bein streckt.",
+        })
+
+        results.append({
+            "name": "supporting_leg_not_overextended",
+            "passed": self.max_standing_knee_angle < self.STANDING_KNEE_MAX,
+            "value": round(self.max_standing_knee_angle, 1),
+            "feedback": "Standbein leicht gebeugt — Balance gut." if self.max_standing_knee_angle < self.STANDING_KNEE_MAX
+                        else "Standbein durchgestreckt — eine leichte Beugung verbessert Balance und Kraftübertragung.",
         })
 
         return results
