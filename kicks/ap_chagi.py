@@ -1,4 +1,4 @@
-from .geometry import L_KNEE, R_KNEE, calc_angle, leg_angles
+from .geometry import L_KNEE, R_KNEE, calc_angle, hip_rotation, leg_angles
 import numpy as np
 
 
@@ -29,14 +29,18 @@ class ApChagi:
         self.max_knee_y_in_kick = float("-inf")
         self.standing_knee_angle = 0.0
         self.max_standing_knee_angle = 0.0
-
         self.torso_angle = 0.0
+        self.hip_rotation = 0.0
+        self.max_abs_hip_rotation = 0.0
 
     def update(self, wl, kicking_side, frame_index):
         self.knee_angle, self.hip_flexion = leg_angles(wl, kicking_side)
 
         standing_side = "right" if kicking_side == "left" else "left"
         self.standing_knee_angle, _ = leg_angles(wl, standing_side)
+
+        self.hip_rotation = hip_rotation(wl)
+        self.max_abs_hip_rotation = max(self.max_abs_hip_rotation, abs(self.hip_rotation))
 
         kicking_knee_idx = L_KNEE if kicking_side == "left" else R_KNEE
         knee_y = wl[kicking_knee_idx].y
@@ -74,6 +78,9 @@ class ApChagi:
                 self.max_knee_y_in_kick = knee_y
             if self.standing_knee_angle > self.max_standing_knee_angle:
                 self.max_standing_knee_angle = self.standing_knee_angle
+
+            if abs(self.hip_rotation) > self.max_abs_hip_rotation:
+                self.max_abs_hip_rotation = abs(self.hip_rotation)
 
             if self.knee_angle < self.CHAMBER_KNEE_MAX and self.hip_flexion < self.CHAMBER_HIP_MAX:
                 self.phase = "rechamber"
@@ -148,6 +155,14 @@ class ApChagi:
             "value": round(self.max_standing_knee_angle, 1),
             "feedback": "Standbein leicht gebeugt — Balance gut." if self.max_standing_knee_angle < self.STANDING_KNEE_MAX
                         else "Standbein durchgestreckt — eine leichte Beugung verbessert Balance und Kraftübertragung.",
+        })
+
+        results.append({
+            "name": "hip_rotation",
+            "passed": self.max_abs_hip_rotation > 10,
+            "value": round(self.max_abs_hip_rotation, 1),
+            "feedback": "Hüftrotation vorhanden" if self.max_abs_hip_rotation > 10
+                        else "Hüfte rotiert kaum",
         })
 
         return results
