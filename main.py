@@ -124,6 +124,8 @@ def process_video(job_id: str, input_path: str, output_path: str, model_path: st
         # Bewertung
         result_list = kick_analyzer.kick.evaluate()
 
+        jobs[job_id]["analysis"] = result_list
+
 
         txt_path = os.path.join(ANALYSIS_DIR, f"{job_id}_analysis.txt")
         with open(txt_path, "w", encoding="utf-8") as f:
@@ -169,6 +171,7 @@ async def upload_video(file: UploadFile = File(...)):
         "status": "uploaded",
         "input": tmp_path,
         "output": None,
+        "analysis": None,
         "progress": 0,
         "total": 0,
         "error": None,
@@ -221,6 +224,16 @@ def download_video(job_id: str):
     if not output_path or not os.path.exists(output_path):
         return JSONResponse({"error": "Ausgabedatei nicht gefunden"}, status_code=404)
     return FileResponse(output_path, media_type="video/mp4", filename="pose_analysis.mp4")
+
+@app.get("/analysis/{job_id}")
+def get_analysis(job_id: str):
+    job = jobs.get(job_id)
+    if not job or job["status"] != "done":
+        return JSONResponse({"error": "Video noch nicht bereit"}, status_code=404)
+    
+    analysis_text = JSONResponse({"analysis": job["analysis"]})
+
+    return analysis_text
 
 
 if __name__ == "__main__":

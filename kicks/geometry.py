@@ -48,4 +48,4 @@ def hip_rotation(wl):
     hip_angle = np.degrees(np.arctan2(hip_vec[1], hip_vec[0]))
 
     # Positive value means right rotation, negative means left rotation
-    return hip_angle - shoulder_angle
+    return float(hip_angle - shoulder_angle)
