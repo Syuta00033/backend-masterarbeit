@@ -1,3 +1,4 @@
+
 from .geometry import L_KNEE, R_KNEE, calc_angle, hip_rotation, leg_angles, L_ANKLE, R_ANKLE
 import numpy as np
 
@@ -7,8 +8,11 @@ class ApChagi:
     NAME = "ap_chagi"
 
     # Maximaler Winkel für die Chamber-Position, um sie als solche zu erkennen
-    CHAMBER_KNEE_MAX = 130
-    CHAMBER_HIP_MAX = 130
+    CHAMBER_KNEE_MAX = 100
+    CHAMBER_HIP_MAX = 120
+
+    CHAMBER_QUALITY_KNEE_MAX = 90
+    CHAMBER_QUALITY_HIP_MAX = 100
 
     # Mindest Winkel für die Kick-Position, um sie als solche zu erkennen
     KICK_KNEE_MIN = 150
@@ -37,8 +41,10 @@ class ApChagi:
         self.knee_angle = 0.0 # Aktueller Kniewinkel
         self.hip_flexion = 0.0 # Aktuelle Hüftbeugung
         self.max_knee_in_kick = 0.0 # Maximaler Kniewinkel während des Kick-Phases
-        self.min_knee_in_chamber = 180.0 # Minimaler Kniewinkel während der Chamber-Phase (je kleiner, desto höher das Knie)
-        self.min_hip_in_chamber = 180.0 # Minimaler Hüftbeugungswinkel während der Chamber-Phase (je kleiner, desto höher die Hüfte)
+        self.min_knee_in_chamber = 180.0 # Minimaler Kniewinkel während der Chamber-Phase
+        self.min_knee_in_rechamber = 180.0 # Minimaler Kniewinkel während der Rechamber-Phase
+        self.min_hip_in_chamber = 180.0 # Minimaler Hüftbeugungswinkel während der Chamber-Phase
+        self.min_hip_in_rechamber = 180.0 # Minimaler Hüftbeugungswinkel während der Rechamber-Phase
         self.min_knee_y = float("inf") # Minimaler y-Wert des Knies während des Chamber + Kick
         self.max_knee_y_in_kick = float("-inf") # Maximaler y-Wert des Knies während des Kicks (je größer, desto mehr sackt das Knie ab)
         self.standing_knee_angle = 0.0 # Aktueller Kniewinkel des Standbeins
@@ -110,7 +116,7 @@ class ApChagi:
             elif self.knee_angle > self.IDLE_KNEE_MIN and self.hip_flexion > self.IDLE_HIP_MIN: # Abbruch zurück in Idle, wenn die Person doch nicht kickt sondern z.B. nur das Knie hebt
                 self.phase = "idle"
                 self.phases_log.append(("idle", frame_index))
-                self.kick_start_frame = None
+                self.reset()
 
         elif self.phase == "kick":
             # Aktualisiere den maximalen Kniewinkel während des Kicks für die spätere Bewertung der Streckung
@@ -132,7 +138,7 @@ class ApChagi:
                 self.max_abs_hip_rotation = abs(self.hip_rotation)
 
             # Wechsel zurück in Idle, wenn die Person das Bein wieder runternimmt oder wenn ein Rechamber erkannt wird (Knie wird nach dem Kick wieder hochgezogen in die Nähe der Chamber-Position)
-            if self.knee_angle < self.CHAMBER_KNEE_MAX and self.hip_flexion < self.CHAMBER_HIP_MAX:
+            if abs(self.knee_angle - self.min_knee_in_chamber) <= self.RECHAMBER_TOLERANCE_DEG and abs(self.hip_flexion - self.min_hip_in_chamber) <= self.RECHAMBER_TOLERANCE_DEG:
                 self.phase = "rechamber"
                 self.phases_log.append(("rechamber", frame_index))
             elif self.knee_angle > self.IDLE_KNEE_MIN and self.hip_flexion > self.IDLE_HIP_MIN:
@@ -140,56 +146,60 @@ class ApChagi:
                 self.phases_log.append(("idle", frame_index))
                 if self.kick_start_frame is not None:
                     self.last_kick_duration_frames = frame_index - self.kick_start_frame
-                    self.kick_start_frame = None
-                    self.idle_ankle_history = []
-                    self.baseline_ankle_y = None
+                    self.reset()
 
         elif self.phase == "rechamber":
+            # Aktualisiere die minimalen Winkel während der Rechamber-Phase
+            if self.knee_angle < self.min_knee_in_rechamber:
+                self.min_knee_in_rechamber = self.knee_angle
+            if self.hip_flexion < self.min_hip_in_rechamber:
+                self.min_hip_in_rechamber = self.hip_flexion
+
             # Wechsel zurück in Idle, wenn die Person das Bein wieder runternimmt
             if self.knee_angle > self.IDLE_KNEE_MIN and self.hip_flexion > self.IDLE_HIP_MIN:
                 self.phase = "idle"
                 self.phases_log.append(("idle", frame_index))
                 if self.kick_start_frame is not None:
                     self.last_kick_duration_frames = frame_index - self.kick_start_frame
-                    self.kick_start_frame = None
-                    self.idle_ankle_history = []
-                    self.baseline_ankle_y = None
+                    self.reset()
+
+    def reset(self):
+        self.kick_start_frame = None
+        self.idle_ankle_history = []
+        self.baseline_ankle_y = None
 
     def evaluate(self):
         phase_names = [p for (p, f) in self.phases_log]
         results = []
 
         results.append({
-            "name": "Knee Extension",
-            "passed": self.max_knee_in_kick > 165,
-            "value": self.max_knee_in_kick,
-            "feedback": "Bein voll gestreckt." if self.max_knee_in_kick > 165 
-            else "Bein nicht vollständig gestreckt."
-        })
-
-        results.append({
-            "name": "chamber_depth",
-            "passed": self.min_knee_in_chamber < 100,
-            "value": self.min_knee_in_chamber,
-            "feedback": "Chamber sauber." if self.min_knee_in_chamber < 100
-                        else "Knie nicht hoch genug gezogen vor dem Kick.",
-        })
-
-        results.append({
-            "name": "rechamber",
-            "passed": "rechamber" in phase_names,
-            "value": None,
-            "feedback": "Rechamber durchgeführt." if "rechamber" in phase_names
-                        else "Rechamber vergessen — nach dem Treffen sollte das Knie zurück in die Chamber-Position gezogen werden, bevor der Fuß abgesetzt wird.",
-        })
-
+                    "name": "chamber_depth",
+                    "passed": self.min_knee_in_chamber <= self.CHAMBER_QUALITY_KNEE_MAX,
+                    "value": self.min_knee_in_chamber,
+                    "feedback": "Chamber eng genug." if self.min_knee_in_chamber <= self.CHAMBER_QUALITY_KNEE_MAX
+                                else "Knie nicht eng genug gezogen.",
+                })
+        
         results.append({
             "name": "hip_lift",
-            "passed": self.min_hip_in_chamber < 120,
+            "passed": self.min_hip_in_chamber <= self.CHAMBER_QUALITY_HIP_MAX,
             "value": self.min_hip_in_chamber,
-            "feedback": "Hüfte ausreichend gehoben." if self.min_hip_in_chamber < 120
+            "feedback": "Hüfte ausreichend gehoben." if self.min_hip_in_chamber <= self.CHAMBER_QUALITY_HIP_MAX
                         else "Hüfte nicht weit genug gebeugt — Knie zu niedrig.",
         })
+
+        knee_extended = self.max_knee_in_kick >= self.KICK_KNEE_MIN
+
+        results.append({
+            "name": "Knee Extension",
+            "passed": knee_extended,
+            "value": self.max_knee_in_kick,
+            "feedback": "Bein voll gestreckt." if knee_extended
+            else "Bein nicht vollständig gestreckt." 
+        })
+
+        if not knee_extended:
+            return results
 
         if self.max_knee_y_in_kick > float("-inf") and self.min_knee_y < float("inf"):
             knee_drop = self.max_knee_y_in_kick - self.min_knee_y
@@ -203,6 +213,18 @@ class ApChagi:
             "feedback": "Knie bleibt auf Höhe während des Kicks." if knee_drop < self.KNEE_DROP_TOLERANCE_M
                         else f"Knie sackt im Kick um {round(knee_drop * 100)} cm ab — die Hüfte sollte die Beugung halten, während das Bein streckt.",
         })
+        
+        results.append({
+            "name": "rechamber",
+            "passed": "rechamber" in phase_names,
+            "value": None,
+            "feedback": "Rechamber durchgeführt." if "rechamber" in phase_names
+                        else "Rechamber vergessen — nach dem Treffen sollte das Knie zurück in die Chamber-Position gezogen werden, bevor der Fuß abgesetzt wird.",
+        })
+
+        if "rechamber" in phase_names:
+            knee_diff = abs(self.min_knee_in_rechamber - self.min_knee_in_chamber)
+        
 
         results.append({
             "name": "supporting_leg_not_overextended",
