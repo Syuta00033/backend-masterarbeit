@@ -1,4 +1,4 @@
-from .geometry import L_KNEE, R_KNEE, calc_angle, hip_rotation, leg_angles
+from .geometry import L_KNEE, R_KNEE, calc_angle, hip_rotation, leg_angles, L_ANKLE, R_ANKLE
 import numpy as np
 
 
@@ -6,99 +6,154 @@ class ApChagi:
 
     NAME = "ap_chagi"
 
+    # Maximaler Winkel für die Chamber-Position, um sie als solche zu erkennen
     CHAMBER_KNEE_MAX = 130
     CHAMBER_HIP_MAX = 130
-    KICK_KNEE_MIN = 150
-    IDLE_KNEE_MIN = 160
-    IDLE_HIP_MIN = 160
 
+    # Mindest Winkel für die Kick-Position, um sie als solche zu erkennen
+    KICK_KNEE_MIN = 150
+
+    # Mindest Winkel, um zurück in den Idle-Zustand zu wechseln (Kick vorbei oder abgebrochen)
+    IDLE_KNEE_MIN = 150
+    IDLE_HIP_MIN = 150
+
+    # Toleranz für das Absacken des Knies während des Kicks (in Metern) — das Knie sollte auf Höhe bleiben oder nur minimal absacken
     KNEE_DROP_TOLERANCE_M = 0.15
-    STANDING_KNEE_MAX = 170
+
+    # Maximaler Winkel des Standbeins - Sollte unter dem Wert bleiben
+    STANDING_KNEE_MAX = 175
+
+    # Winkel-Toleranz für Rechamber - Sollte 15 Grad oder weniger von der Chamber-Position abweichen, um als Rechamber zu gelten
+    RECHAMBER_TOLERANCE_DEG = 15
+
+    LIFT_THRESHHOLD_M = 0.05 # Fuß sollte mindestens 5 cm vom Boden abheben, um den Start des Kicks zu erkennen
+    BASELINE_WINDOW_FRAMES = 10 
 
     def __init__(self):
         self.phase = "idle"
         self.phases_log = []
-        self._kick_start_frame = None
-        self.last_kick_duration_frames = None
-        self.knee_angle = 0.0
-        self.hip_flexion = 0.0
-        self.max_knee_in_kick = 0.0
-        self.min_knee_in_chamber = 180.0
-        self.min_hip_in_chamber = 180.0
-        self.min_knee_y = float("inf")
-        self.max_knee_y_in_kick = float("-inf")
-        self.standing_knee_angle = 0.0
-        self.max_standing_knee_angle = 0.0
-        self.torso_angle = 0.0
-        self.hip_rotation = 0.0
-        self.max_abs_hip_rotation = 0.0
+        self.kick_start_frame = None # Frame, bei dem Kick beginnt
+        self.last_kick_duration_frames = None # Insgesamte Frame Dauer des Kicks in Frames
+        self.knee_angle = 0.0 # Aktueller Kniewinkel
+        self.hip_flexion = 0.0 # Aktuelle Hüftbeugung
+        self.max_knee_in_kick = 0.0 # Maximaler Kniewinkel während des Kick-Phases
+        self.min_knee_in_chamber = 180.0 # Minimaler Kniewinkel während der Chamber-Phase (je kleiner, desto höher das Knie)
+        self.min_hip_in_chamber = 180.0 # Minimaler Hüftbeugungswinkel während der Chamber-Phase (je kleiner, desto höher die Hüfte)
+        self.min_knee_y = float("inf") # Minimaler y-Wert des Knies während des Chamber + Kick
+        self.max_knee_y_in_kick = float("-inf") # Maximaler y-Wert des Knies während des Kicks (je größer, desto mehr sackt das Knie ab)
+        self.standing_knee_angle = 0.0 # Aktueller Kniewinkel des Standbeins
+        self.max_standing_knee_angle = 0.0 # Maximaler Kniewinkel des Standbeins während des Kicks (je größer, desto mehr durchgestreckt)
+        self.torso_angle = 0.0 # Aktueller Winkel des Torsos (Schulter-Hüfte-Knie)
+        self.hip_rotation = 0.0 # Aktuelle Hüftrotation
+        self.max_abs_hip_rotation = 0.0 # Maximaler absoluter Wert der Hüftrotation während des Kicks (je größer, desto mehr Rotation)
+
+        # Standfuß
+        self.idle_ankle_history = [] # Historie der Knöchel-Positionen in Idle-Frames, um die Höhe des Standfußes über dem Boden zu bestimmen
+        self.baseline_ankle_y = None # gemittelte Höhe
 
     def update(self, wl, kicking_side, frame_index):
+        # Berechne Knie und Hüftwinkel für das kickende Bein
         self.knee_angle, self.hip_flexion = leg_angles(wl, kicking_side)
 
+        # Berechne Kniewinkel des Standbeins
         standing_side = "right" if kicking_side == "left" else "left"
         self.standing_knee_angle, _ = leg_angles(wl, standing_side)
 
+        # Berechne Hüftrotation
         self.hip_rotation = hip_rotation(wl)
         self.max_abs_hip_rotation = max(self.max_abs_hip_rotation, abs(self.hip_rotation))
 
+        # Y-Wert des kickenden Knies für die Bewertung, ob das Knie während des Kicks zu stark absackt. Das Knie sollte auf Höhe bleiben oder nur minimal absacken.
         kicking_knee_idx = L_KNEE if kicking_side == "left" else R_KNEE
         knee_y = wl[kicking_knee_idx].y
+
+        standing_ankle_idx = L_ANKLE if standing_side == "left" else R_ANKLE
+        ankle_y = wl[standing_ankle_idx].y
 
         #self.torso_angle = calc_angle(wl[11], wl[23], wl[23] + np.array([0, 1, 0]))  # Schulter-Hüfte-Knie
 
         if self.phase == "idle":
+            self.idle_ankle_history.append(ankle_y)
+
+            # Detektiere Beginn des Kicks
+            if len(self.idle_ankle_history) > self.BASELINE_WINDOW_FRAMES:
+                self.idle_ankle_history.pop(0)
+            if len(self.idle_ankle_history) >= self.BASELINE_WINDOW_FRAMES:
+                self.baseline_ankle_y = np.mean(self.idle_ankle_history)
+            
+            if self.baseline_ankle_y is not None and self.kick_start_frame is None and (self.baseline_ankle_y - ankle_y) > self.LIFT_THRESHHOLD_M:
+                self.kick_start_frame = frame_index
+
+            # Wechsel in Chamber, wenn beide Bedingungen erfüllt sind: Knie genug angewinkelt und Hüfte genug gebeugt
             if self.knee_angle < self.CHAMBER_KNEE_MAX and self.hip_flexion < self.CHAMBER_HIP_MAX:
                 self.phase = "chamber"
                 self.phases_log.append(("chamber", frame_index))
-                self._kick_start_frame = frame_index
+                #self.kick_start_frame = frame_index
 
         elif self.phase == "chamber":
+            # Aktualisiere die minimalen Winkel in der Chamber-Position für die spätere Bewertung
             if self.knee_angle < self.min_knee_in_chamber:
                 self.min_knee_in_chamber = self.knee_angle
+            
+            # Aktualisiere die minimale Hüftbeugung in der Chamber-Position für die spätere Bewertung
             if self.hip_flexion < self.min_hip_in_chamber:
                 self.min_hip_in_chamber = self.hip_flexion
+
+            # Aktualisiere den minimalen y-Wert des Knies während der Chamber-Position, um später bewerten zu können, wie hoch das Knie gezogen wurde
             if knee_y < self.min_knee_y:
                 self.min_knee_y = knee_y
 
+            # Wechsel in Kick, wenn beide Bedingungen erfüllt sind: Knie genug gestreckt und Hüfte noch gebeugt genug
             if self.knee_angle > self.KICK_KNEE_MIN and self.hip_flexion < self.CHAMBER_HIP_MAX:
                 self.phase = "kick"
                 self.phases_log.append(("kick", frame_index))
-            elif self.knee_angle > self.IDLE_KNEE_MIN and self.hip_flexion > self.IDLE_HIP_MIN:
+            elif self.knee_angle > self.IDLE_KNEE_MIN and self.hip_flexion > self.IDLE_HIP_MIN: # Abbruch zurück in Idle, wenn die Person doch nicht kickt sondern z.B. nur das Knie hebt
                 self.phase = "idle"
                 self.phases_log.append(("idle", frame_index))
-                self._kick_start_frame = None
+                self.kick_start_frame = None
 
         elif self.phase == "kick":
+            # Aktualisiere den maximalen Kniewinkel während des Kicks für die spätere Bewertung der Streckung
             if self.knee_angle > self.max_knee_in_kick:
                 self.max_knee_in_kick = self.knee_angle
+
+            # Aktualisiere den maximalen y-Wert des Knies während des Kicks, um später bewerten zu können, wie stark das Knie absackt. Das Knie sollte auf Höhe bleiben oder nur minimal absacken.
             if knee_y < self.min_knee_y:
                 self.min_knee_y = knee_y
             if knee_y > self.max_knee_y_in_kick:
                 self.max_knee_y_in_kick = knee_y
+
+            # Aktualisiere den maximalen Kniewinkel des Standbeins während des Kicks für die spätere Bewertung, ob das Standbein zu stark durchgestreckt ist
             if self.standing_knee_angle > self.max_standing_knee_angle:
                 self.max_standing_knee_angle = self.standing_knee_angle
 
+            # Aktualisiere die maximale absolute Hüftrotation während des Kicks für die spätere Bewertung, ob ausreichend Hüftrotation vorhanden ist
             if abs(self.hip_rotation) > self.max_abs_hip_rotation:
                 self.max_abs_hip_rotation = abs(self.hip_rotation)
 
+            # Wechsel zurück in Idle, wenn die Person das Bein wieder runternimmt oder wenn ein Rechamber erkannt wird (Knie wird nach dem Kick wieder hochgezogen in die Nähe der Chamber-Position)
             if self.knee_angle < self.CHAMBER_KNEE_MAX and self.hip_flexion < self.CHAMBER_HIP_MAX:
                 self.phase = "rechamber"
                 self.phases_log.append(("rechamber", frame_index))
             elif self.knee_angle > self.IDLE_KNEE_MIN and self.hip_flexion > self.IDLE_HIP_MIN:
                 self.phase = "idle"
                 self.phases_log.append(("idle", frame_index))
-                if self._kick_start_frame is not None:
-                    self.last_kick_duration_frames = frame_index - self._kick_start_frame
-                    self._kick_start_frame = None
+                if self.kick_start_frame is not None:
+                    self.last_kick_duration_frames = frame_index - self.kick_start_frame
+                    self.kick_start_frame = None
+                    self.idle_ankle_history = []
+                    self.baseline_ankle_y = None
 
         elif self.phase == "rechamber":
+            # Wechsel zurück in Idle, wenn die Person das Bein wieder runternimmt
             if self.knee_angle > self.IDLE_KNEE_MIN and self.hip_flexion > self.IDLE_HIP_MIN:
                 self.phase = "idle"
                 self.phases_log.append(("idle", frame_index))
-                if self._kick_start_frame is not None:
-                    self.last_kick_duration_frames = frame_index - self._kick_start_frame
-                    self._kick_start_frame = None
+                if self.kick_start_frame is not None:
+                    self.last_kick_duration_frames = frame_index - self.kick_start_frame
+                    self.kick_start_frame = None
+                    self.idle_ankle_history = []
+                    self.baseline_ankle_y = None
 
     def evaluate(self):
         phase_names = [p for (p, f) in self.phases_log]

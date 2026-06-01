@@ -13,7 +13,7 @@ class BandalChagi:
     def __init__(self):
         self.phase = "idle"
         self.phases_log = []
-        self._kick_start_frame = None
+        self.kick_start_frame = None
         self.last_kick_duration_frames = None
         self.knee_angle = 0.0
         self.hip_flexion = 0.0
