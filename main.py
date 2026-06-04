@@ -89,9 +89,9 @@ def process_video(job_id: str, input_path: str, output_path: str, model_path: st
         options = PoseLandmarkerOptions(
             base_options=BaseOptions(model_asset_path=model_path),
             running_mode=VisionRunningMode.VIDEO,
-            min_pose_detection_confidence=0.7,
-            min_pose_presence_confidence=0.7,
-            min_tracking_confidence=0.7,
+            min_pose_detection_confidence=0.6,
+            min_pose_presence_confidence=0.6,
+            min_tracking_confidence=0.6,
         )
 
         kick_analyzer = KickAnalyzer(kick_type=kick_type)
