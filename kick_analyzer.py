@@ -6,6 +6,8 @@ from kicks.geometry import L_KNEE, R_KNEE
 
 class KickAnalyzer:
 
+    SIDE_LIFT_THRESHOLD = 0.05 # 5cm
+
     def __init__(self, kick_type="ap_chagi"):
         if kick_type not in KICK_CLASSES:
             raise ValueError(f"Unbekannter Kick-Typ: {kick_type}")
@@ -18,8 +20,10 @@ class KickAnalyzer:
 
         wl = result.pose_world_landmarks[0]
 
-        self.kicking_side = self._select_side(wl)
-        self.kick.update(wl, self.kicking_side, frame_index)
+        self._select_side(wl)
+
+        if self.kicking_side is not None:
+            self.kick.update(wl, self.kicking_side, frame_index)
 
         cv2.putText(annotated, self.kick.phase, (10, 30),
                     cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2, cv2.LINE_AA)
@@ -44,11 +48,11 @@ class KickAnalyzer:
 
     def _select_side(self, wl):
         if self.kick.phase != "idle":
-            return self.kicking_side
+            return
+        
+        diff = wl[R_KNEE].y - wl[L_KNEE].y
 
-        if wl[L_KNEE].y < wl[R_KNEE].y:
-            self.kicking_side = "left"
-        else:
-            self.kicking_side = "right"
+        if abs(diff) < self.SIDE_LIFT_THRESHOLD:
+            return
 
-        return self.kicking_side
+        self.kicking_side = "right" if diff < 0 else "left"
