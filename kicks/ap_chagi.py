@@ -109,6 +109,10 @@ class ApChagi:
             if knee_y < self.min_knee_y:
                 self.min_knee_y = knee_y
 
+            # Aktualisiere max Kniewinkel während Chamber Phase
+            if self.standing_knee_angle > self.max_standing_knee_angle:
+                self.max_standing_knee_angle = self.standing_knee_angle
+
             # Wechsel in Kick, wenn beide Bedingungen erfüllt sind: Knie genug gestreckt und Hüfte noch gebeugt genug
             if self.knee_angle > self.KICK_KNEE_MIN and self.hip_flexion < self.CHAMBER_HIP_MAX:
                 self.phase = "kick"
@@ -155,6 +159,9 @@ class ApChagi:
             if self.hip_flexion < self.min_hip_in_rechamber:
                 self.min_hip_in_rechamber = self.hip_flexion
 
+            if self.standing_knee_angle > self.max_standing_knee_angle:
+                self.max_standing_knee_angle = self.standing_knee_angle
+
             # Wechsel zurück in Idle, wenn die Person das Bein wieder runternimmt
             if self.knee_angle > self.IDLE_KNEE_MIN and self.hip_flexion > self.IDLE_HIP_MIN:
                 self.phase = "idle"
@@ -167,6 +174,8 @@ class ApChagi:
         self.kick_start_frame = None
         self.idle_ankle_history = []
         self.baseline_ankle_y = None
+
+
 
     def evaluate(self):
         phase_names = [p for (p, f) in self.phases_log]
