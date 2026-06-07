@@ -7,7 +7,7 @@ class ApChagi:
 
     NAME = "ap_chagi"
 
-     # --- Detection ---
+    # --- Detection ---
     CHAMBER_KNEE_MAX = 100
     CHAMBER_HIP_MAX = 120
     KICK_KNEE_MIN = 150
@@ -131,10 +131,6 @@ class ApChagi:
         self.max_knee_y_in_kick = max(self.max_knee_y_in_kick, self._knee_y)
         self.max_standing_knee_angle = max(self.max_standing_knee_angle, self.standing_knee_angle)
 
-        # track max hip rotation during kick for quality evaluation, independent of direction
-        if abs(self.hip_rotation) > self.max_abs_hip_rotation:
-            self.max_abs_hip_rotation = abs(self.hip_rotation)
-
         # transition back to chamber if knee and hip angles return to chamber range during kick
         if abs(self.knee_angle - self.min_knee_in_chamber) <= self.RECHAMBER_TOLERANCE_DEG and abs(self.hip_flexion - self.min_hip_in_chamber) <= self.RECHAMBER_TOLERANCE_DEG:
             self._transition_to("rechamber", frame_index)
@@ -177,7 +173,6 @@ class ApChagi:
         }
 
     def evaluate(self):
-        phase_names = [p for (p, f) in self.phases_log]
         results = []
 
         results.append(self._result(
