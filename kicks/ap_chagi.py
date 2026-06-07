@@ -1,5 +1,5 @@
 
-from .geometry import L_KNEE, R_KNEE, calc_angle, hip_rotation, leg_angles, L_ANKLE, R_ANKLE
+from .geometry import L_KNEE, R_KNEE, hip_rotation, leg_angles, L_ANKLE, R_ANKLE
 import numpy as np
 
 
