@@ -138,7 +138,7 @@ class ApChagi:
             self._transition_to("idle", frame_index)
             if self.kick_start_frame is not None:
                 self.last_kick_duration_frames = frame_index - self.kick_start_frame
-                self.reset()
+            self.reset()
 
 
     def _update_rechamber(self, frame_index):
@@ -149,10 +149,9 @@ class ApChagi:
         # transition back to idle, if the person lowers the leg again
         if self.knee_angle > self.IDLE_KNEE_MIN and self.hip_flexion > self.IDLE_HIP_MIN:
             self._transition_to("idle", frame_index)
-            self.reset()
             if self.kick_start_frame is not None:
                 self.last_kick_duration_frames = frame_index - self.kick_start_frame
-                self.reset()
+            self.reset()
 
     def _transition_to(self, new_phase, frame_index):
         self.phase = new_phase
