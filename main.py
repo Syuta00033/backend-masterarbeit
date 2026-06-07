@@ -142,7 +142,7 @@ def process_video(job_id: str, input_path: str, output_path: str, model_path: st
                 f.write(f"  {line}\n")
         print(f"Analyse gespeichert in: {txt_path}")
 
-        # OpenCV schreibt mp4v, das Browser nicht abspielen können – in H.264 umkodieren
+        # H264 encoding for better compatibility
         h264_path = output_path.replace(".mp4", "_h264.mp4")
         r = subprocess.run(
             [imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-i", output_path,
