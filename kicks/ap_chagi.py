@@ -168,9 +168,8 @@ class ApChagi:
         self.idle_ankle_history = []
         self.baseline_ankle_y = None
 
-    @staticmethod
+    @staticmethod # for evaluation
     def _result(name, passed, value, ok, fail):
-        """Vereinheitlicht das Result-Dict-Schema."""
         return {
             "name": name,
             "passed": passed,
