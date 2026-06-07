@@ -37,13 +37,18 @@ class KickAnalyzer:
                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
         
         if self.kick.kick_start_frame is not None:
-            cv2.putText(annotated, f"Start Frame: {self.kick.kick_start_frame}", (10, 170),
+            cv2.putText(annotated, f"Start Frame: {self.kick.kick_start_frame}", (10, 180),
                       cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
 
         if self.kick.last_kick_duration_frames is not None:
             cv2.putText(annotated, f"Last Kick: {self.kick.last_kick_duration_frames} frames",
-                        (10, 180), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2, cv2.LINE_AA)
+                        (10, 210), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2, cv2.LINE_AA)
 
+        if self.kick.NAME == "bandal_chagi":
+            cv2.putText(annotated, f"Hip Rotation: {int(self.kick.hip_rotation)}", (10, 240),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
+            cv2.putText(annotated, f"Knee Lateral: {int(self.kick.knee_lateral)}", (10, 270),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
         return annotated
 
     def _select_side(self, wl):

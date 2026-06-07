@@ -5,11 +5,12 @@ L_HIP, R_HIP = 23, 24
 L_KNEE, R_KNEE = 25, 26
 L_ANKLE, R_ANKLE = 27, 28
 
-
+# convert mediapipe landmark to numpy array
 def landmark_to_array(landmark):
     return np.array([landmark.x, landmark.y, landmark.z])
 
 
+# calculate angle between three points
 def calc_angle(a, b, c):
     ba = np.array(a) - np.array(b)
     bc = np.array(c) - np.array(b)
@@ -17,6 +18,7 @@ def calc_angle(a, b, c):
     return float(np.degrees(np.arccos(np.clip(cosine_angle, -1.0, 1.0))))
 
 
+# calculate knee angle and hip flexion for given leg
 def leg_angles(wl, side):
     if side == "left":
         hip = landmark_to_array(wl[L_HIP])
@@ -33,12 +35,13 @@ def leg_angles(wl, side):
     hip_flexion = calc_angle(shoulder, hip, knee)
     return knee_angle, hip_flexion
 
+
+# calculate hip rotation based on shoulder and hip landmarks
 def hip_rotation(wl):
-    # Calculate from above
-    ls = np.array([wl[11].x, wl[11].z])
-    rs = np.array([wl[12].x, wl[12].z])
-    lh = np.array([wl[23].x, wl[23].z])
-    rh = np.array([wl[24].x, wl[24].z])
+    ls = np.array([wl[11].x, wl[11].z]) # left shoulder
+    rs = np.array([wl[12].x, wl[12].z]) # right shoulder
+    lh = np.array([wl[23].x, wl[23].z]) # left hip
+    rh = np.array([wl[24].x, wl[24].z]) # right hip
 
     shoulder_vec = rs - ls
     hip_vec = rh - lh
@@ -49,3 +52,4 @@ def hip_rotation(wl):
 
     # Positive value means right rotation, negative means left rotation
     return float(hip_angle - shoulder_angle)
+
