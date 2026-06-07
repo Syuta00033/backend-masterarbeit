@@ -140,7 +140,6 @@ class ApChagi:
             self._transition_to("rechamber", frame_index)
         elif self.knee_angle > self.IDLE_KNEE_MIN and self.hip_flexion > self.IDLE_HIP_MIN:
             self._transition_to("idle", frame_index)
-            self.reset()
             if self.kick_start_frame is not None:
                 self.last_kick_duration_frames = frame_index - self.kick_start_frame
                 self.reset()
