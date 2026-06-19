@@ -224,7 +224,7 @@ class ApChagi:
         knee_drop = self._knee_drop()
         results.append(self._graded(
             "knee_height", "Kniehöhe", knee_drop,
-            fail_at=0.30, ideal_at=0.0, value_display=round(knee_drop, 3),
+            fail_at=0.30, ideal_at=0.15, value_display=round(knee_drop, 3),
             ok="Knie bleibt auf Höhe während des Kicks.",
             fail=f"Knie sackt im Kick um {round(knee_drop * 100)} cm ab.",
         ))
