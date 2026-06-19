@@ -1,5 +1,5 @@
 
-from .geometry import L_KNEE, R_KNEE, hip_rotation, leg_angles, L_ANKLE, R_ANKLE
+from .geometry import L_KNEE, R_KNEE, hip_rotation, leg_angles, L_ANKLE, R_ANKLE, score_linear
 import numpy as np
 
 
@@ -163,37 +163,58 @@ class ApChagi:
         self.baseline_ankle_y = None
 
     @staticmethod # for evaluation
-    def _result(name, passed, value, ok, fail):
+    def _graded(name, label, value, fail_at, ideal_at, ok, fail, value_display=None):
+        score = score_linear(value, fail_at, ideal_at)
+        passed = score >= 50.0
         return {
             "name": name,
+            "label": label,
+            "score": round(score),
+            "label": label,
+            "value": value_display if value_display is not None else round(value, 1),
             "passed": passed,
-            "value": value,
-            "feedback": ok if passed else fail,
+            "feedback": ok if passed else fail
+        }
+    
+    @staticmethod
+    def _boolean_criterium(name, label, done, ok, fail):
+        return {
+            "name": name,
+            "label": label,
+            "score": 100 if done else 0,
+            "value": None,
+            "passed": done,
+            "feedback": ok if done else fail
+
         }
 
     def evaluate(self):
         results = []
 
-        results.append(self._result(
+        results.append(self._graded(
             "chamber_depth",
-            self.min_knee_in_chamber <= self.CHAMBER_QUALITY_KNEE_MAX,
+            "chamber_tiefe",
             self.min_knee_in_chamber,
+            fail_at=self.CHAMBER_KNEE_MAX,
+            ideal_at=self.CHAMBER_QUALITY_KNEE_MAX,
             ok="Chamber eng genug.",
             fail="Knie nicht eng genug gezogen.",
         ))
-        results.append(self._result(
+
+        results.append(self._graded(
             "hip_lift",
-            self.min_hip_in_chamber <= self.CHAMBER_QUALITY_HIP_MAX,
+            "Hüft-Lift",
             self.min_hip_in_chamber,
+            fail_at=self.CHAMBER_HIP_MAX,
+            ideal_at=self.CHAMBER_QUALITY_HIP_MAX,
             ok="Hüfte ausreichend gehoben.",
             fail="Hüfte nicht weit genug gebeugt — Knie zu niedrig.",
         ))
 
         knee_extended = self.max_knee_in_kick >= self.KICK_KNEE_MIN
-        results.append(self._result(
-            "knee_extension",
-            knee_extended,
-            self.max_knee_in_kick,
+        results.append(self._graded(
+            "knee_extension", "Beinstreckung", self.max_knee_in_kick,
+            fail_at=130, ideal_at=170,
             ok="Bein voll gestreckt.",
             fail="Bein nicht vollständig gestreckt.",
         ))
@@ -201,31 +222,25 @@ class ApChagi:
             return results
 
         knee_drop = self._knee_drop()
-        results.append(self._result(
-            "knee_height_maintained",
-            knee_drop < self.KNEE_DROP_TOLERANCE_M,
-            round(knee_drop, 3),
+        results.append(self._graded(
+            "knee_height", "Kniehöhe", knee_drop,
+            fail_at=0.30, ideal_at=0.0, value_display=round(knee_drop, 3),
             ok="Knie bleibt auf Höhe während des Kicks.",
-            fail=f"Knie sackt im Kick um {round(knee_drop * 100)} cm ab — "
-                "die Hüfte sollte die Beugung halten, während das Bein streckt.",
+            fail=f"Knie sackt im Kick um {round(knee_drop * 100)} cm ab.",
         ))
-        results.append(self._result(
-            "supporting_leg_not_overextended",
-            self.max_standing_knee_angle < self.STANDING_KNEE_MAX,
-            round(self.max_standing_knee_angle, 1),
+        
+        results.append(self._graded(
+            "supporting_leg", "Standbein", self.max_standing_knee_angle,
+            fail_at=180, ideal_at=175,
             ok="Standbein leicht gebeugt — Balance gut.",
-            fail="Standbein durchgestreckt — eine leichte Beugung verbessert "
-                "Balance und Kraftübertragung.",
+            fail="Standbein durchgestreckt — eine leichte Beugung verbessert Balance.",
         ))
 
         rechamber_done = any(p == "rechamber" for (p, _) in self.phases_log)
-        results.append(self._result(
-            "rechamber",
-            rechamber_done,
-            None,
+        results.append(self._boolean_criterium(
+            "rechamber", "Rechamber", rechamber_done,
             ok="Rechamber durchgeführt.",
-            fail="Rechamber vergessen — nach dem Treffen sollte das Knie zurück "
-                "in die Chamber-Position gezogen werden, bevor der Fuß abgesetzt wird.",
+            fail="Rechamber vergessen — Knie nach dem Treffen zurückziehen.",
         ))
 
         return results

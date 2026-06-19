@@ -63,6 +63,33 @@ def draw_landmarks_on_image(rgb_image, detection_result):
         )
     return annotated_image
 
+def build_summary(criteria: list[dict]) -> dict:
+    if criteria:
+        total = 0
+        for c in criteria:
+            total += c.get("score", 0)
+        overall = round(total / len(criteria))
+    else:
+        overall = 0
+
+    # clamp score stars to 1-5
+    stars = round (overall/20)
+    if stars < 1:
+        stars = 1
+    if stars > 5:
+        stars = 5
+
+    # check failed criteria to show the tips
+    failed = []
+    for c in criteria:
+        if not c.get("passed", False):
+            failed.append(c)
+    
+    tips = []
+    for f in failed:
+        tips.append(f.get("feedback", ""))
+
+    return {"overall": overall, "stars": stars, "criteria": criteria, "tips": tips}
 
 def process_video(job_id: str, input_path: str, output_path: str, model_path: str, kick_type: str):
     try:
@@ -122,9 +149,8 @@ def process_video(job_id: str, input_path: str, output_path: str, model_path: st
         out.release()
 
         # Bewertung
-        result_list = kick_analyzer.kick.evaluate()
-
-        jobs[job_id]["analysis"] = result_list
+        criteria = kick_analyzer.kick.evaluate()
+        jobs[job_id]["analysis"] = build_summary(criteria)
 
 
         txt_path = os.path.join(ANALYSIS_DIR, f"{job_id}_analysis.txt")
@@ -138,8 +164,8 @@ def process_video(job_id: str, input_path: str, output_path: str, model_path: st
             for phase, frame in kick_analyzer.kick.phases_log:
                 f.write(f"  Frame {frame:>5}: {phase}\n")
             f.write("\nBewertung:\n")
-            for line in result_list:
-                f.write(f"  {line}\n")
+            #for line in result_list:
+            #f.write(f"Bewertung" {jobs[job_id]["analysis"]\n})
         print(f"Analyse gespeichert in: {txt_path}")
 
         # H264 encoding for better compatibility

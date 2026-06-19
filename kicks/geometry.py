@@ -53,3 +53,7 @@ def hip_rotation(wl):
     # Positive value means right rotation, negative means left rotation
     return float(hip_angle - shoulder_angle)
 
+
+def score_linear(value, fail_at, ideal_at):
+    t = (value - fail_at) / (ideal_at - fail_at) # normalize to 0-1 range
+    return float(max(0.0, min(1.0, t)) * 100 ) # convert to percentage
