@@ -193,7 +193,7 @@ class ApChagi:
 
         results.append(self._graded(
             "chamber_depth",
-            "chamber_tiefe",
+            "Chamber Winkel",
             self.min_knee_in_chamber,
             fail_at=self.CHAMBER_KNEE_MAX,
             ideal_at=self.CHAMBER_QUALITY_KNEE_MAX,
@@ -203,7 +203,7 @@ class ApChagi:
 
         results.append(self._graded(
             "hip_lift",
-            "Hüft-Lift",
+            "Hüftbeugung",
             self.min_hip_in_chamber,
             fail_at=self.CHAMBER_HIP_MAX,
             ideal_at=self.CHAMBER_QUALITY_HIP_MAX,
