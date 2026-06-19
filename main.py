@@ -152,22 +152,6 @@ def process_video(job_id: str, input_path: str, output_path: str, model_path: st
         criteria = kick_analyzer.kick.evaluate()
         jobs[job_id]["analysis"] = build_summary(criteria)
 
-
-        txt_path = os.path.join(ANALYSIS_DIR, f"{job_id}_analysis.txt")
-        with open(txt_path, "w", encoding="utf-8") as f:
-            f.write(f"Kick-Typ: {kick_type}\n")
-            f.write(f"Kicking Side: {kick_analyzer.kicking_side}\n")
-            f.write(f"Letzte Kick-Dauer: {kick_analyzer.kick.last_kick_duration_frames} Frames\n")
-            f.write(f"FPS: {fps}\n")
-            f.write(f"Gesamt-Frames: {total_frames}\n")
-            f.write("\nPhasen-Verlauf:\n")
-            for phase, frame in kick_analyzer.kick.phases_log:
-                f.write(f"  Frame {frame:>5}: {phase}\n")
-            f.write("\nBewertung:\n")
-            #for line in result_list:
-            #f.write(f"Bewertung" {jobs[job_id]["analysis"]\n})
-        print(f"Analyse gespeichert in: {txt_path}")
-
         # H264 encoding for better compatibility
         h264_path = output_path.replace(".mp4", "_h264.mp4")
         r = subprocess.run(
