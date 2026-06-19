@@ -208,7 +208,7 @@ class ApChagi:
             fail_at=self.CHAMBER_HIP_MAX,
             ideal_at=self.CHAMBER_QUALITY_HIP_MAX,
             ok="Hüfte ausreichend gehoben.",
-            fail="Hüfte nicht weit genug gebeugt — Knie zu niedrig.",
+            fail="Hüfte nicht weit genug gebeugt",
         ))
 
         knee_extended = self.max_knee_in_kick >= self.KICK_KNEE_MIN
@@ -232,15 +232,15 @@ class ApChagi:
         results.append(self._graded(
             "supporting_leg", "Standbein", self.max_standing_knee_angle,
             fail_at=180, ideal_at=175,
-            ok="Standbein leicht gebeugt — Balance gut.",
-            fail="Standbein durchgestreckt — eine leichte Beugung verbessert Balance.",
+            ok="Balance gut: Standbein leicht gebeugt",
+            fail="Standbein durchgestreckt. Eine leichte Beugung verbessert Balance.",
         ))
 
         rechamber_done = any(p == "rechamber" for (p, _) in self.phases_log)
         results.append(self._boolean_criterium(
             "rechamber", "Rechamber", rechamber_done,
             ok="Rechamber durchgeführt.",
-            fail="Rechamber vergessen — Knie nach dem Treffen zurückziehen.",
+            fail="Rechamber vergessen: Knie nach dem Treffen zurückziehen.",
         ))
 
         return results
