@@ -58,6 +58,11 @@ class ApChagi:
         self.idle_ankle_history = []
         self.baseline_ankle_y = None
 
+        # fps
+        self.fps = 30
+        self.prev_foot_pos = None
+        self.max_foot_velocity = 0.0
+
     def update(self, wl, kicking_side, frame_index):
         self._compute_current_values(wl, kicking_side)
 
@@ -92,6 +97,18 @@ class ApChagi:
 
         standing_ankle_idx = L_ANKLE if standing_side == "left" else R_ANKLE
         self._ankle_y = wl[standing_ankle_idx].y
+
+        # compute foot velocity
+        foot_idx = L_ANKLE if kicking_side == "left" else R_ANKLE
+        pos = np.array([wl[foot_idx].x, wl[foot_idx].y, wl[foot_idx].z])
+
+        if self.prev_foot_pos is not None:
+            dist = np.linalg.norm(pos - self.prev_foot_pos) # Meter
+            velocity = round((dist * self.fps) * 3.6) # km/h
+
+            if self.phase == "chamber" or self.phase == "kick":
+                self.max_foot_velocity = max(self.max_foot_velocity, velocity)
+        self.prev_foot_pos = pos
 
 
     def _update_idle(self, frame_index):

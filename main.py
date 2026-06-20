@@ -63,7 +63,7 @@ def draw_landmarks_on_image(rgb_image, detection_result):
         )
     return annotated_image
 
-def build_summary(criteria: list[dict]) -> dict:
+def build_summary(criteria: list[dict], velocity: float) -> dict:
     if criteria:
         total = 0
         for c in criteria:
@@ -89,7 +89,7 @@ def build_summary(criteria: list[dict]) -> dict:
     for f in failed:
         tips.append(f.get("feedback", ""))
 
-    return {"overall": overall, "stars": stars, "criteria": criteria, "tips": tips}
+    return {"overall": overall, "stars": stars, "criteria": criteria, "tips": tips, "velocity": velocity}
 
 def process_video(job_id: str, input_path: str, output_path: str, model_path: str, kick_type: str):
     try:
@@ -122,6 +122,7 @@ def process_video(job_id: str, input_path: str, output_path: str, model_path: st
         )
 
         kick_analyzer = KickAnalyzer(kick_type=kick_type)
+        kick_analyzer.kick.fps = fps
         frame_index = 0
 
         with PoseLandmarker.create_from_options(options) as landmarker:
@@ -150,7 +151,7 @@ def process_video(job_id: str, input_path: str, output_path: str, model_path: st
 
         # Bewertung
         criteria = kick_analyzer.kick.evaluate()
-        jobs[job_id]["analysis"] = build_summary(criteria)
+        jobs[job_id]["analysis"] = build_summary(criteria, kick_analyzer.kick.max_foot_velocity)
 
         # H264 encoding for better compatibility
         h264_path = output_path.replace(".mp4", "_h264.mp4")
