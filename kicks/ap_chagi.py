@@ -1,4 +1,7 @@
 
+from collections import deque
+import statistics
+
 from .geometry import L_KNEE, R_KNEE, hip_rotation, leg_angles, L_ANKLE, R_ANKLE, score_linear
 import numpy as np
 
@@ -61,7 +64,8 @@ class ApChagi:
         # fps
         self.fps = 30
         self.prev_foot_pos = None
-        self.max_foot_velocity = 0.0
+        self.max_foot_velocity = 0
+        self.velocity_history = deque(maxlen=3)
 
     def update(self, wl, kicking_side, frame_index):
         self._compute_current_values(wl, kicking_side)
@@ -104,10 +108,13 @@ class ApChagi:
 
         if self.prev_foot_pos is not None:
             dist = np.linalg.norm(pos - self.prev_foot_pos) # Meter
-            velocity = round((dist * self.fps) * 3.6) # km/h
+            velocity = (dist * self.fps) * 3.6 # km/h
+
+            self.velocity_history.append(velocity)
+            smoothed = round(statistics.median(self.velocity_history))
 
             if self.phase == "chamber" or self.phase == "kick":
-                self.max_foot_velocity = max(self.max_foot_velocity, velocity)
+                self.max_foot_velocity = max(self.max_foot_velocity, smoothed)
         self.prev_foot_pos = pos
 
 
