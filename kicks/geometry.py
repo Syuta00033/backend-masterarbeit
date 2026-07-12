@@ -35,25 +35,33 @@ def leg_angles(wl, side):
     hip_flexion = calc_angle(shoulder, hip, knee)
     return knee_angle, hip_flexion
 
-
-# calculate hip rotation based on shoulder and hip landmarks
-def hip_rotation(wl):
-    ls = np.array([wl[11].x, wl[11].z]) # left shoulder
-    rs = np.array([wl[12].x, wl[12].z]) # right shoulder
-    lh = np.array([wl[23].x, wl[23].z]) # left hip
-    rh = np.array([wl[24].x, wl[24].z]) # right hip
-
-    shoulder_vec = rs - ls
+def hip_orientation(wl):
+    lh = np.array([wl[L_HIP].x, wl[L_HIP].z])
+    rh = np.array([wl[R_HIP].x, wl[R_HIP].z])
     hip_vec = rh - lh
+    return float(np.degrees(np.arctan2(hip_vec[1], hip_vec[0])))
 
-    # Calculate the angle between the shoulder vector and hip vector
-    shoulder_angle = np.degrees(np.arctan2(shoulder_vec[1], shoulder_vec[0]))
-    hip_angle = np.degrees(np.arctan2(hip_vec[1], hip_vec[0]))
 
-    # Positive value means right rotation, negative means left rotation
-    return float(hip_angle - shoulder_angle)
+def angle_difference(a, b):
+    return (a - b + 180) % 360 - 180
 
 
 def score_linear(value, fail_at, ideal_at):
     t = (value - fail_at) / (ideal_at - fail_at) # normalize to 0-1 range
     return float(max(0.0, min(1.0, t)) * 100 ) # convert to percentage
+
+
+def pelvis_facing(wl):
+    lh = np.array([wl[L_HIP].x, wl[L_HIP].z])
+    rh = np.array([wl[R_HIP].x, wl[R_HIP].z])
+    hip_vec = rh - lh
+    facing = np.array([-hip_vec[1], hip_vec[0]])  # senkrecht zur Hüftlinie
+    return float(np.degrees(np.arctan2(facing[1], facing[0])))
+
+
+def kick_direction(wl, kicking_side):
+    hip_idx = L_HIP if kicking_side == "left" else R_HIP
+    ankle_idx = L_ANKLE if kicking_side == "left" else R_ANKLE
+    dx = wl[ankle_idx].x - wl[hip_idx].x
+    dz = wl[ankle_idx].z - wl[hip_idx].z
+    return float(np.degrees(np.arctan2(dz, dx)))

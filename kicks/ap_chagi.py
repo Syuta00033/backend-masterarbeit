@@ -2,7 +2,7 @@
 from collections import deque
 import statistics
 
-from .geometry import L_KNEE, R_KNEE, hip_rotation, leg_angles, L_ANKLE, R_ANKLE, score_linear
+from .geometry import L_KNEE, R_KNEE, hip_orientation, angle_difference, leg_angles, L_ANKLE, R_ANKLE, score_linear, pelvis_facing, kick_direction
 import numpy as np
 
 
@@ -26,6 +26,9 @@ class ApChagi:
     KNEE_DROP_TOLERANCE_M = 0.15
     STANDING_KNEE_MAX = 175
 
+    # check hip rotation -> low hip rotation for ap chagi
+    HIP_ROTATION_MAX = 90
+
     def __init__(self):
         # --- phases state ---
         self.phase = "idle"
@@ -38,6 +41,7 @@ class ApChagi:
         self.hip_flexion = 0.0
         self.standing_knee_angle = 0.0
         self.hip_rotation = 0.0
+        self.hip_rotation_start = None
         self.torso_angle = 0.0
         self._knee_y = 0.0
         self._ankle_y = 0.0
@@ -60,6 +64,10 @@ class ApChagi:
         # --- standing ankle for idle detection ---
         self.idle_ankle_history = []
         self.baseline_ankle_y = None
+
+        # hip rotation/alignment
+        self.hip_alignment = 0.0
+        self.max_hip_alignment = 0.0
 
         # fps
         self.fps = 30
@@ -92,8 +100,14 @@ class ApChagi:
         self.standing_knee_angle, _ = leg_angles(wl, standing_side)
 
         # compute hip rotation
-        self.hip_rotation = hip_rotation(wl)
+        if self.hip_rotation_start is None:
+            self.hip_rotation_start = hip_orientation(wl)
+
+        self.hip_rotation = angle_difference(hip_orientation(wl), self.hip_rotation_start)
         self.max_abs_hip_rotation = max(self.max_abs_hip_rotation, abs(self.hip_rotation))
+
+        raw = abs(angle_difference(pelvis_facing(wl), kick_direction(wl, kicking_side)))
+        self.hip_alignment = min(raw, 180 - raw)
 
         # check y position of kicking knee
         kicking_knee_idx = L_KNEE if kicking_side == "left" else R_KNEE
@@ -154,6 +168,8 @@ class ApChagi:
         self.min_knee_y = min(self.min_knee_y, self._knee_y)
         self.max_knee_y_in_kick = max(self.max_knee_y_in_kick, self._knee_y)
         self.max_standing_knee_angle = max(self.max_standing_knee_angle, self.standing_knee_angle)
+
+        self.max_hip_alignment = max(self.max_hip_alignment, self.hip_alignment)
 
         # transition back to chamber if knee and hip angles return to chamber range during kick
         if abs(self.knee_angle - self.min_knee_in_chamber) <= self.RECHAMBER_TOLERANCE_DEG and abs(self.hip_flexion - self.min_hip_in_chamber) <= self.RECHAMBER_TOLERANCE_DEG:
@@ -244,6 +260,13 @@ class ApChagi:
         ))
         if not knee_extended:
             return results
+
+        results.append(self._graded(
+            "hip_alignment", "Hüftrotation", self.max_hip_alignment,
+            fail_at=100, ideal_at=30,
+            ok="Hüfte nicht überdreht.",
+            fail="Hüfte zu sehr rotiert. Weniger Hüftrotation für Ap Chagi.",
+        ))
 
         knee_drop = self._knee_drop()
         results.append(self._graded(
