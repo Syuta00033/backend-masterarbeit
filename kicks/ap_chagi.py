@@ -2,7 +2,7 @@
 from collections import deque
 import statistics
 
-from .geometry import L_KNEE, R_KNEE, hip_orientation, angle_difference, leg_angles, L_ANKLE, R_ANKLE, score_linear, pelvis_facing, kick_direction
+from .geometry import L_KNEE, R_KNEE, angle_difference, leg_angles, L_ANKLE, R_ANKLE, score_linear, pelvis_facing, kick_direction
 import numpy as np
 
 
@@ -26,9 +26,6 @@ class ApChagi:
     KNEE_DROP_TOLERANCE_M = 0.15
     STANDING_KNEE_MAX = 175
 
-    # check hip rotation -> low hip rotation for ap chagi
-    HIP_ROTATION_MAX = 90
-
     def __init__(self):
         # --- phases state ---
         self.phase = "idle"
@@ -40,8 +37,6 @@ class ApChagi:
         self.knee_angle = 0.0
         self.hip_flexion = 0.0
         self.standing_knee_angle = 0.0
-        self.hip_rotation = 0.0
-        self.hip_rotation_start = None
         self.torso_angle = 0.0
         self._knee_y = 0.0
         self._ankle_y = 0.0
@@ -55,7 +50,6 @@ class ApChagi:
         self.min_knee_y = float("inf")
         self.max_knee_y_in_kick = float("-inf")
         self.max_standing_knee_angle = 0.0
-        self.max_abs_hip_rotation = 0.0
 
         # --- Min/Max for Rechamber ---
         self.min_knee_in_rechamber = 180.0
@@ -98,13 +92,6 @@ class ApChagi:
         # compute knee angle for standing leg to check for overextension
         standing_side = "right" if kicking_side == "left" else "left"
         self.standing_knee_angle, _ = leg_angles(wl, standing_side)
-
-        # compute hip rotation
-        if self.hip_rotation_start is None:
-            self.hip_rotation_start = hip_orientation(wl)
-
-        self.hip_rotation = angle_difference(hip_orientation(wl), self.hip_rotation_start)
-        self.max_abs_hip_rotation = max(self.max_abs_hip_rotation, abs(self.hip_rotation))
 
         raw = abs(angle_difference(pelvis_facing(wl), kick_direction(wl, kicking_side)))
         self.hip_alignment = min(raw, 180 - raw)

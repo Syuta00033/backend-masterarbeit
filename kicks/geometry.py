@@ -35,16 +35,8 @@ def leg_angles(wl, side):
     hip_flexion = calc_angle(shoulder, hip, knee)
     return knee_angle, hip_flexion
 
-def hip_orientation(wl):
-    lh = np.array([wl[L_HIP].x, wl[L_HIP].z])
-    rh = np.array([wl[R_HIP].x, wl[R_HIP].z])
-    hip_vec = rh - lh
-    return float(np.degrees(np.arctan2(hip_vec[1], hip_vec[0])))
-
-
 def angle_difference(a, b):
     return (a - b + 180) % 360 - 180
-
 
 def score_linear(value, fail_at, ideal_at):
     t = (value - fail_at) / (ideal_at - fail_at) # normalize to 0-1 range

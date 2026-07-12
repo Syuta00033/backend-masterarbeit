@@ -44,9 +44,6 @@ class KickAnalyzer:
             cv2.putText(annotated, f"Last Kick: {self.kick.last_kick_duration_frames} frames",
                         (10, 210), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2, cv2.LINE_AA)
 
-        cv2.putText(annotated, f"Hip Rotation: {int(self.kick.hip_rotation)}", (10, 240),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
-
         cv2.putText(annotated, f"Hip Alignment: {int(self.kick.hip_alignment)}", (10, 270),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2, cv2.LINE_AA)
         cv2.putText(annotated, f"Max Alignment: {int(self.kick.max_hip_alignment)}", (10, 300),

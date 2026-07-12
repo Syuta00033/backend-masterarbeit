@@ -1,7 +1,7 @@
 from collections import deque
 import statistics
 
-from .geometry import L_KNEE, R_KNEE, hip_orientation, angle_difference, leg_angles, L_ANKLE, R_ANKLE, score_linear, pelvis_facing, kick_direction
+from .geometry import L_KNEE, R_KNEE, angle_difference, leg_angles, L_ANKLE, R_ANKLE, score_linear, pelvis_facing, kick_direction
 import numpy as np
 
 # https://en.wikipedia.org/wiki/Roundhouse_kick
@@ -42,8 +42,6 @@ class BandalChagi:
         self.knee_angle = 0.0
         self.hip_flexion = 0.0
         self.torso_angle = 0.0
-        self.hip_rotation = 0.0
-        self.hip_rotation_start = None
         self._knee_y = 0.0
         self._ankle_y = 0.0
 
@@ -52,7 +50,6 @@ class BandalChagi:
         self.min_hip_in_chamber = 180.0
 
         self.standing_knee_angle = 0.0       # gesetzt in _compute_current_values, max in update
-        self.max_abs_hip_rotation = 0.0       # max in _compute_current_values
         self.max_knee_in_kick = 0.0           # max in _update_kick
         self.min_knee_y = float("inf")                 # min in chamber + kick
         self.max_knee_y_in_kick = -float("inf")         # max in _update_kick
@@ -61,9 +58,6 @@ class BandalChagi:
         self.min_hip_in_rechamber = 180.0      # min in _update_rechamber
         self.idle_ankle_history = []          # genutzt in _update_idle
         self.baseline_ankle_y = None          # genutzt in _update_idle
-
-        self.knee_lateral = 0.0
-        self.max_knee_lateral = 0.0
 
         # hip rotation/alignment
         self.hip_alignment = 0.0
@@ -98,19 +92,8 @@ class BandalChagi:
         standing_side = "right" if kicking_side == "left" else "left"
         self.standing_knee_angle, _ = leg_angles(wl, standing_side)
 
-        # hip rotation
-        if self.hip_rotation_start is None:
-            self.hip_rotation_start = hip_orientation(wl)
-
-        # compute hip rotation relative to start
-        self.hip_rotation = angle_difference(hip_orientation(wl), self.hip_rotation_start)
-        self.max_abs_hip_rotation = max(self.max_abs_hip_rotation, abs(self.hip_rotation))
-
         raw = abs(angle_difference(pelvis_facing(wl), kick_direction(wl, kicking_side)))
         self.hip_alignment = min(raw, 180 - raw)
-
-        #self.knee_lateral = knee_lateral_angle(wl, kicking_side)
-        #self.max_knee_lateral = max(self.max_knee_lateral, self.knee_lateral)
 
         # check y position of kicking knee
         kicking_knee_idx = L_KNEE if kicking_side == "left" else R_KNEE
