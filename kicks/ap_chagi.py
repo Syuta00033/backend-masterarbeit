@@ -208,7 +208,6 @@ class ApChagi:
         passed = score >= 50.0
         return {
             "name": name,
-            "label": label,
             "score": round(score),
             "label": label,
             "value": value_display if value_display is not None else round(value, 1),
