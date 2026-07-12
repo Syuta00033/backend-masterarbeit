@@ -159,7 +159,7 @@ class BandalChagi:
         #self.max_standing_knee_angle = max(self.max_standing_knee_angle, self.standing_knee_angle)
 
         # change to kick phase
-        if self.knee_angle > self.KICK_KNEE_MIN and self.hip_flexion < self.CHAMBER_HIP_MAX and self.hip_alignment >= 30:
+        if self.knee_angle > self.KICK_KNEE_MIN and self.hip_flexion < self.CHAMBER_HIP_MAX:
             self._transition_to("kick", frame_index)
         elif self.knee_angle > self.IDLE_KNEE_MIN and self.hip_flexion > self.IDLE_HIP_MIN: # Abbruch zurück in Idle, wenn die Person doch nicht kickt sondern z.B. nur das Knie hebt
             self._transition_to("idle", frame_index)
