@@ -5,6 +5,9 @@ import uuid
 import uvicorn
 import threading
 import imageio_ffmpeg
+import shutil
+import json
+from datetime import datetime
 
 import cv2
 import numpy as np
@@ -39,6 +42,10 @@ TEMP_DIR = tempfile.gettempdir()
 BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 ANALYSIS_DIR = os.path.join(BACKEND_DIR, "analysis")
 os.makedirs(ANALYSIS_DIR, exist_ok=True)
+
+# Persistenter Speicher für gespeicherte Kicks (Video + Bewertung)
+SAVED_DIR = os.path.join(BACKEND_DIR, "saved")
+os.makedirs(SAVED_DIR, exist_ok=True)
 
 jobs: dict[str, dict] = {}
 
@@ -202,6 +209,7 @@ async def start_processing(job_id: str, model: str = "lite", kick_type: str = "a
 
     output_path = os.path.join(TEMP_DIR, f"{job_id}_output.mp4")
     jobs[job_id]["output"] = output_path
+    jobs[job_id]["kick_type"] = kick_type
     jobs[job_id]["status"] = "processing"
 
     threading.Thread(
@@ -245,6 +253,84 @@ def get_analysis(job_id: str):
     analysis_text = JSONResponse({"analysis": job["analysis"]})
 
     return analysis_text
+
+
+@app.post("/save/{job_id}")
+def save_kick(job_id: str):
+    job = jobs.get(job_id)
+    if not job or job["status"] != "done":
+        return JSONResponse({"error": "Kick noch nicht fertig analysiert"}, status_code=404)
+
+    output_path = job["output"]
+    if not output_path or not os.path.exists(output_path):
+        return JSONResponse({"error": "Ausgabevideo nicht gefunden"}, status_code=404)
+
+    save_id = str(uuid.uuid4())
+    shutil.copy(output_path, os.path.join(SAVED_DIR, f"{save_id}.mp4"))
+
+    meta = {
+        "id": save_id,
+        "date": datetime.now().isoformat(timespec="seconds"),
+        "kick_type": job.get("kick_type", "ap_chagi"),
+        "analysis": job["analysis"],
+    }
+    with open(os.path.join(SAVED_DIR, f"{save_id}.json"), "w", encoding="utf-8") as f:
+        json.dump(meta, f, ensure_ascii=False, indent=2)
+
+    return JSONResponse({"id": save_id})
+
+
+@app.get("/saved")
+def list_saved():
+    items = []
+    for name in os.listdir(SAVED_DIR):
+        if not name.endswith(".json"):
+            continue
+        with open(os.path.join(SAVED_DIR, name), encoding="utf-8") as f:
+            meta = json.load(f)
+        analysis = meta.get("analysis") or {}
+        items.append({
+            "id": meta["id"],
+            "date": meta["date"],
+            "kick_type": meta.get("kick_type"),
+            "overall": analysis.get("overall"),
+            "stars": analysis.get("stars"),
+        })
+    items.sort(key=lambda x: x["date"], reverse=True)
+    return JSONResponse({"items": items})
+
+
+@app.get("/saved/{save_id}")
+def get_saved(save_id: str):
+    save_id = os.path.basename(save_id)
+    path = os.path.join(SAVED_DIR, f"{save_id}.json")
+    if not os.path.exists(path):
+        return JSONResponse({"error": "Nicht gefunden"}, status_code=404)
+    with open(path, encoding="utf-8") as f:
+        return JSONResponse(json.load(f))
+
+
+@app.get("/saved/{save_id}/video")
+def get_saved_video(save_id: str):
+    save_id = os.path.basename(save_id)
+    path = os.path.join(SAVED_DIR, f"{save_id}.mp4")
+    if not os.path.exists(path):
+        return JSONResponse({"error": "Video nicht gefunden"}, status_code=404)
+    return FileResponse(path, media_type="video/mp4", filename="kick.mp4")
+
+
+@app.delete("/saved/{save_id}")
+def delete_saved(save_id: str):
+    save_id = os.path.basename(save_id)
+    removed = False
+    for ext in (".mp4", ".json"):
+        p = os.path.join(SAVED_DIR, f"{save_id}{ext}")
+        if os.path.exists(p):
+            os.remove(p)
+            removed = True
+    if not removed:
+        return JSONResponse({"error": "Nicht gefunden"}, status_code=404)
+    return JSONResponse({"status": "deleted"})
 
 
 if __name__ == "__main__":
