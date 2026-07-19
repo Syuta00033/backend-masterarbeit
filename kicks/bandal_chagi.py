@@ -1,7 +1,7 @@
 from collections import deque
 import statistics
 
-from .geometry import L_KNEE, R_KNEE, angle_difference, leg_angles, L_ANKLE, R_ANKLE, score_linear, pelvis_facing, kick_direction
+from .geometry import L_KNEE, R_KNEE, hip_kick_angle, leg_angles, L_ANKLE, R_ANKLE, score_linear
 import numpy as np
 
 # https://en.wikipedia.org/wiki/Roundhouse_kick
@@ -92,7 +92,7 @@ class BandalChagi:
         standing_side = "right" if kicking_side == "left" else "left"
         self.standing_knee_angle, _ = leg_angles(wl, standing_side)
 
-        raw = abs(angle_difference(pelvis_facing(wl), kick_direction(wl, kicking_side)))
+        raw = hip_kick_angle(wl, kicking_side)
         self.hip_alignment = min(raw, 180 - raw)
 
         # check y position of kicking knee

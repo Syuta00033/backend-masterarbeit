@@ -57,3 +57,6 @@ def kick_direction(wl, kicking_side):
     dx = wl[ankle_idx].x - wl[hip_idx].x
     dz = wl[ankle_idx].z - wl[hip_idx].z
     return float(np.degrees(np.arctan2(dz, dx)))
+
+def hip_kick_angle(wl, kicking_side):
+    return abs(angle_difference(pelvis_facing(wl), kick_direction(wl, kicking_side)))
