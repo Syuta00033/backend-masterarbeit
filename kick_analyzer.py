@@ -1,7 +1,7 @@
 import cv2
 
 from kicks import KICK_CLASSES
-from kicks.geometry import L_KNEE, R_KNEE
+from kicks.geometry import L_HIP, R_HIP, L_KNEE, R_KNEE, L_ANKLE, R_ANKLE
 
 
 class KickAnalyzer:
@@ -44,10 +44,35 @@ class KickAnalyzer:
             cv2.putText(annotated, f"Last Kick: {self.kick.last_kick_duration_frames} frames",
                         (10, 210), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2, cv2.LINE_AA)
 
+        # Visibility der Bein-Landmarks
+        leg_vis = [wl[i].visibility for i in (L_HIP, R_HIP, L_KNEE, R_KNEE, L_ANKLE, R_ANKLE)]
+        min_vis = min(leg_vis)
+        avg_vis = sum(leg_vis) / len(leg_vis)
+        if min_vis >= 0.7:
+            vis_color = (0, 255, 0)      # gruen: ok
+        elif min_vis >= 0.5:
+            vis_color = (255, 255, 0)    # gelb: grenzwertig
+        else:
+            vis_color = (255, 0, 0)      # rot: unzuverlaessig
+        cv2.putText(annotated, f"Visibility: min {min_vis:.2f}  avg {avg_vis:.2f}", (10, 240),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, vis_color, 2, cv2.LINE_AA)
+
         cv2.putText(annotated, f"Hip Alignment: {int(self.kick.hip_alignment)}", (10, 270),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2, cv2.LINE_AA)
         cv2.putText(annotated, f"Max Alignment: {int(self.kick.max_hip_alignment)}", (10, 300),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2, cv2.LINE_AA)
+
+        if self.kick.NAME == "dwit_chagi":
+            cv2.putText(annotated, f"Impact Align: {int(self.kick.hip_alignment_at_impact)}", (10, 330),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 200, 255), 2, cv2.LINE_AA)
+            cv2.putText(annotated, f"Over-Rot: {int(self.kick.max_over_rotation)}", (10, 360),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 200, 255), 2, cv2.LINE_AA)
+            cv2.putText(annotated, f"Total-Rot: {int(self.kick.total_rotation)}", (10, 390),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 200, 255), 2, cv2.LINE_AA)
+            cv2.putText(annotated, f"Foot Gap: {self.kick._foot_gap:.2f}  (max {self.kick.max_foot_gap_in_kick:.2f})", (10, 420),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 200, 255), 2, cv2.LINE_AA)
+            cv2.putText(annotated, f"Foot Height: {self.kick._foot_height:.2f}  Gap-H: {self.kick._foot_gap_h:.2f}", (10, 450),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 200, 255), 2, cv2.LINE_AA)
 
         return annotated
 

@@ -244,8 +244,6 @@ class ApChagi:
             ok="Bein voll gestreckt.",
             fail="Bein nicht vollständig gestreckt.",
         ))
-        if not knee_extended:
-            return results
 
         results.append(self._graded(
             "hip_alignment", "Hüftrotation", self.max_hip_alignment,

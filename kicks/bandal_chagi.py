@@ -252,9 +252,6 @@ class BandalChagi:
             ok="Bein voll gestreckt.",
             fail="Bein nicht vollständig gestreckt.",
         ))
-        if not knee_extended:
-            return results
-
 
         knee_drop = self._knee_drop()
         results.append(self._graded(
