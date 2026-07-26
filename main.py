@@ -261,7 +261,7 @@ def get_analysis(job_id: str):
 
 
 @app.post("/save/{job_id}")
-def save_kick(job_id: str):
+def save_kick(job_id: str, client: str = ""):
     job = jobs.get(job_id)
     if not job or job["status"] != "done":
         return JSONResponse({"error": "Kick noch nicht fertig analysiert"}, status_code=404)
@@ -275,6 +275,7 @@ def save_kick(job_id: str):
 
     meta = {
         "id": save_id,
+        "client": client,
         "date": datetime.now().isoformat(timespec="seconds"),
         "kick_type": job.get("kick_type", "ap_chagi"),
         "analysis": job["analysis"],
@@ -286,13 +287,16 @@ def save_kick(job_id: str):
 
 
 @app.get("/saved")
-def list_saved():
+def list_saved(client: str = ""):
     items = []
     for name in os.listdir(SAVED_DIR):
         if not name.endswith(".json"):
             continue
         with open(os.path.join(SAVED_DIR, name), encoding="utf-8") as f:
             meta = json.load(f)
+        # nur die eigenen Kicks des Geräts anzeigen
+        if meta.get("client", "") != client:
+            continue
         analysis = meta.get("analysis") or {}
         items.append({
             "id": meta["id"],

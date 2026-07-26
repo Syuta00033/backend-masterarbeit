@@ -8,3 +8,5 @@ python -m venv .venv
 python -m pip install --upgrade pip
 
 requirements installieren: pip install -r requirements.txt
+
+Befehl zum starten des Servers für cloudflare: uvicorn main:app --host 127.0.0.1 --port 8000
