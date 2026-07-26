@@ -7,7 +7,11 @@ import threading
 import imageio_ffmpeg
 import shutil
 import json
+import mimetypes
 from datetime import datetime
+
+mimetypes.add_type("application/javascript", ".js")
+mimetypes.add_type("text/css", ".css")
 
 import cv2
 import numpy as np
@@ -16,6 +20,7 @@ import mediapipe as mp
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from mediapipe.tasks.python.vision import drawing_utils
 from mediapipe.tasks.python.vision import drawing_styles
@@ -331,6 +336,11 @@ def delete_saved(save_id: str):
     if not removed:
         return JSONResponse({"error": "Nicht gefunden"}, status_code=404)
     return JSONResponse({"status": "deleted"})
+
+
+STATIC_DIR = os.path.join(BACKEND_DIR, "static")
+if os.path.isdir(STATIC_DIR):
+    app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="frontend")
 
 
 if __name__ == "__main__":
