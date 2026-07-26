@@ -59,19 +59,32 @@ PoseLandmarker = mp.tasks.vision.PoseLandmarker
 PoseLandmarkerOptions = mp.tasks.vision.PoseLandmarkerOptions
 VisionRunningMode = mp.tasks.vision.RunningMode
 
-_POSE_LANDMARK_STYLE = drawing_styles.get_default_pose_landmarks_style()
-_POSE_CONNECTION_STYLE = drawing_utils.DrawingSpec(color=(0, 255, 0), thickness=2)
+STYLE_REFERENCE_SIZE = 540 
 
 
-def draw_landmarks_on_image(rgb_image, detection_result):
+def make_pose_styles(frame_w, frame_h):
+    s = min(frame_w, frame_h) / STYLE_REFERENCE_SIZE
+    landmark_style = drawing_styles.get_default_pose_landmarks_style()
+    seen = set()
+    for spec in landmark_style.values():
+        if id(spec) in seen:
+            continue
+        seen.add(id(spec))
+        spec.thickness = max(1, round(spec.thickness * s))
+        spec.circle_radius = max(1, round(spec.circle_radius * s))
+    connection_style = drawing_utils.DrawingSpec(color=(0, 255, 0), thickness=max(1, round(2 * s)))
+    return landmark_style, connection_style
+
+
+def draw_landmarks_on_image(rgb_image, detection_result, landmark_style, connection_style):
     annotated_image = np.copy(rgb_image)
     for pose_landmarks in detection_result.pose_landmarks:
         drawing_utils.draw_landmarks(
             image=annotated_image,
             landmark_list=pose_landmarks,
             connections=vision.PoseLandmarksConnections.POSE_LANDMARKS,
-            landmark_drawing_spec=_POSE_LANDMARK_STYLE,
-            connection_drawing_spec=_POSE_CONNECTION_STYLE,
+            landmark_drawing_spec=landmark_style,
+            connection_drawing_spec=connection_style,
         )
     return annotated_image
 
@@ -137,6 +150,8 @@ def process_video(job_id: str, input_path: str, output_path: str, model_path: st
         kick_analyzer.kick.fps = fps
         frame_index = 0
 
+        landmark_style, connection_style = make_pose_styles(out_w, out_h)
+
         with PoseLandmarker.create_from_options(options) as landmarker:
             while cap.isOpened():
                 success, bgr_frame = cap.read()
@@ -151,7 +166,7 @@ def process_video(job_id: str, input_path: str, output_path: str, model_path: st
                 mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
                 result = landmarker.detect_for_video(mp_image, timestamp_ms)
 
-                annotated = draw_landmarks_on_image(rgb_frame, result)
+                annotated = draw_landmarks_on_image(rgb_frame, result, landmark_style, connection_style)
                 annotated = kick_analyzer.process_frame(result, annotated, frame_index)
 
                 out.write(cv2.cvtColor(annotated, cv2.COLOR_RGB2BGR))

@@ -7,6 +7,7 @@ from kicks.geometry import L_HIP, R_HIP, L_KNEE, R_KNEE, L_ANKLE, R_ANKLE
 class KickAnalyzer:
 
     SIDE_LIFT_THRESHOLD = 0.05 # 5cm
+    HUD_REFERENCE_SIZE = 540 
 
     def __init__(self, kick_type="ap_chagi"):
         if kick_type not in KICK_CLASSES:
@@ -25,24 +26,25 @@ class KickAnalyzer:
         if self.kicking_side is not None:
             self.kick.update(wl, self.kicking_side, frame_index)
 
-        cv2.putText(annotated, self.kick.phase, (10, 30),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2, cv2.LINE_AA)
-        cv2.putText(annotated, f"Knee Angle: {int(self.kick.knee_angle)}", (10, 60),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
-        cv2.putText(annotated, f"Hip Flexion: {int(self.kick.hip_flexion)}", (10, 90),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
-        cv2.putText(annotated, f"Side: {self.kicking_side}", (10, 120),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
-        cv2.putText(annotated, f"Torso Angle: {int(self.kick.torso_angle)}", (10, 150),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
-        
+
+        s = min(annotated.shape[0], annotated.shape[1]) / self.HUD_REFERENCE_SIZE
+        thick = max(1, round(2 * s))
+
+        def text(msg, y, color=(255, 255, 255), size=0.8):
+            cv2.putText(annotated, msg, (10, int(y * s)),
+                        cv2.FONT_HERSHEY_SIMPLEX, size * s, color, thick, cv2.LINE_AA)
+
+        text(self.kick.phase, 30, (0, 255, 0), 1.0)
+        text(f"Knee Angle: {int(self.kick.knee_angle)}", 60)
+        text(f"Hip Flexion: {int(self.kick.hip_flexion)}", 90)
+        text(f"Side: {self.kicking_side}", 120)
+        text(f"Torso Angle: {int(self.kick.torso_angle)}", 150)
+
         if self.kick.kick_start_frame is not None:
-            cv2.putText(annotated, f"Start Frame: {self.kick.kick_start_frame}", (10, 180),
-                      cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
+            text(f"Start Frame: {self.kick.kick_start_frame}", 180)
 
         if self.kick.last_kick_duration_frames is not None:
-            cv2.putText(annotated, f"Last Kick: {self.kick.last_kick_duration_frames} frames",
-                        (10, 210), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2, cv2.LINE_AA)
+            text(f"Last Kick: {self.kick.last_kick_duration_frames} frames", 210, (0, 255, 255))
 
         # Visibility der Bein-Landmarks
         leg_vis = [wl[i].visibility for i in (L_HIP, R_HIP, L_KNEE, R_KNEE, L_ANKLE, R_ANKLE)]
@@ -54,32 +56,24 @@ class KickAnalyzer:
             vis_color = (255, 255, 0)    # gelb: grenzwertig
         else:
             vis_color = (255, 0, 0)      # rot: unzuverlaessig
-        cv2.putText(annotated, f"Visibility: min {min_vis:.2f}  avg {avg_vis:.2f}", (10, 240),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, vis_color, 2, cv2.LINE_AA)
+        text(f"Visibility: min {min_vis:.2f}  avg {avg_vis:.2f}", 240, vis_color)
 
-        cv2.putText(annotated, f"Hip Alignment: {int(self.kick.hip_alignment)}", (10, 270),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2, cv2.LINE_AA)
-        cv2.putText(annotated, f"Max Alignment: {int(self.kick.max_hip_alignment)}", (10, 300),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2, cv2.LINE_AA)
+        text(f"Hip Alignment: {int(self.kick.hip_alignment)}", 270, (0, 255, 255))
+        text(f"Max Alignment: {int(self.kick.max_hip_alignment)}", 300, (0, 255, 255))
 
         if self.kick.NAME == "dwit_chagi":
-            cv2.putText(annotated, f"Impact Align: {int(self.kick.hip_alignment_at_impact)}", (10, 330),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 200, 255), 2, cv2.LINE_AA)
-            cv2.putText(annotated, f"Over-Rot: {int(self.kick.max_over_rotation)}", (10, 360),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 200, 255), 2, cv2.LINE_AA)
-            cv2.putText(annotated, f"Total-Rot: {int(self.kick.total_rotation)}", (10, 390),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 200, 255), 2, cv2.LINE_AA)
-            cv2.putText(annotated, f"Foot Gap: {self.kick._foot_gap:.2f}  (max {self.kick.max_foot_gap_in_kick:.2f})", (10, 420),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 200, 255), 2, cv2.LINE_AA)
-            cv2.putText(annotated, f"Foot Height: {self.kick._foot_height:.2f}  Gap-H: {self.kick._foot_gap_h:.2f}", (10, 450),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 200, 255), 2, cv2.LINE_AA)
+            text(f"Impact Align: {int(self.kick.hip_alignment_at_impact)}", 330, (0, 200, 255))
+            text(f"Over-Rot: {int(self.kick.max_over_rotation)}", 360, (0, 200, 255))
+            text(f"Total-Rot: {int(self.kick.total_rotation)}", 390, (0, 200, 255))
+            text(f"Foot Gap: {self.kick._foot_gap:.2f}  (max {self.kick.max_foot_gap_in_kick:.2f})", 420, (0, 200, 255), 0.7)
+            text(f"Foot Height: {self.kick._foot_height:.2f}  Gap-H: {self.kick._foot_gap_h:.2f}", 450, (0, 200, 255), 0.7)
 
         return annotated
 
     def _select_side(self, wl):
         if self.kick.phase != "idle":
             return
-        
+
         diff = wl[R_KNEE].y - wl[L_KNEE].y
 
         if abs(diff) < self.SIDE_LIFT_THRESHOLD:
