@@ -35,6 +35,7 @@ class BandalChagi:
         # --- phases state ---
         self.phase = "idle"
         self.phases_log = []
+        self.kick_detected = False
         self.kick_start_frame = None
         self.last_kick_duration_frames = None
 
@@ -180,6 +181,8 @@ class BandalChagi:
             self.reset()
 
     def _transition_to(self, new_phase, frame_index):
+        if new_phase == "kick":
+            self.kick_detected = True
         self.phase = new_phase
         self.phases_log.append((new_phase, frame_index))
 
@@ -235,6 +238,9 @@ class BandalChagi:
             fail="Hüfte nicht weit genug gebeugt",
         ))
 
+        if not self.kick_detected:
+            return results
+
         results.append(self._graded(
             "hip_alignment", "Hüftrotation", self.max_hip_alignment,
             fail_at=30, ideal_at=70,
@@ -245,7 +251,6 @@ class BandalChagi:
         if self.max_hip_alignment < 30:
             return results
 
-        knee_extended = self.max_knee_in_kick >= self.KICK_KNEE_MIN
         results.append(self._graded(
             "knee_extension", "Beinstreckung", self.max_knee_in_kick,
             fail_at=130, ideal_at=170,

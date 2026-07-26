@@ -32,8 +32,7 @@ class DwitChagi:
     STANDING_KNEE_MAX = 175
     BODY_ROTATION_FAIL = 110   # Ausrichtung beim Treffer (~180 = Rücken zum Ziel)
     BODY_ROTATION_IDEAL = 170
-    OVER_ROTATION_IDEAL = 10   # Weiterdrehung nach "Rücken zum Ziel"
-    OVER_ROTATION_FAIL = 60
+    OVER_ROTATION_FAIL = 60    # ab hier gilt die Drehung als durchgedreht
     FOOT_GAP_FAIL = 0.40
     FOOT_GAP_IDEAL = 0.15
     KICK_REACH_MIN = 0.40      # min. Fußabstand für echten Kick (Meter)
@@ -49,6 +48,7 @@ class DwitChagi:
         # --- phases state ---
         self.phase = "idle"
         self.phases_log = []
+        self.kick_detected = False
         self.kick_start_frame = None
         self.last_kick_duration_frames = None
 
@@ -269,6 +269,8 @@ class DwitChagi:
             self.reset()
 
     def _transition_to(self, new_phase, frame_index):
+        if new_phase == "kick":
+            self.kick_detected = True
         self.phase = new_phase
         self.phases_log.append((new_phase, frame_index))
 
@@ -280,7 +282,6 @@ class DwitChagi:
         self.prev_pelvis_angle = None
         self._best_align = 0.0
         self._rotation_at_best_align = None
-        self.max_over_rotation = 0.0
         self.max_foot_gap_in_kick = 0.0
         self.max_foot_height_in_chamber = 0.0
         self._chamber_frames = 0
@@ -326,24 +327,17 @@ class DwitChagi:
             fail="Bein nicht weit genug gestreckt — beim Dwit Chagi schiebt das Bein gerade nach hinten durch.",
         ))
 
-        # ohne Kick-Phase keine weiteren Kriterien
-        if not any(p == "kick" for (p, _) in self.phases_log):
+        if not self.kick_detected:
             return results
 
-        # Körperdrehung beim Treffer (~180 = Rücken zum Ziel)
+        if self.max_over_rotation > self.OVER_ROTATION_FAIL:
+            rotation_fail = "Zu weit durchgedreht. Das ist eher ein Spinning Side Kick"
+
         results.append(self._graded(
             "body_rotation", "Körperdrehung", self.hip_alignment_at_impact,
             fail_at=self.BODY_ROTATION_FAIL, ideal_at=self.BODY_ROTATION_IDEAL,
             ok="Körper korrekt eingedreht — Rücken zum Ziel.",
-            fail="Körper nicht korrekt eingedreht — beim Treffer zeigt der Körper zur Seite (eher Side Kick).",
-        ))
-
-        results.append(self._graded(
-            "no_over_rotation", "Über-Rotation", self.max_over_rotation,
-            fail_at=self.OVER_ROTATION_FAIL, ideal_at=self.OVER_ROTATION_IDEAL,
-            value_display=round(self.max_over_rotation, 1),
-            ok="Drehung sauber gestoppt.",
-            fail="Zu weit gedreht — die Drehung sollte stoppen, sobald der Rücken zum Ziel zeigt (sonst Spin-Side-Kick).",
+            fail=rotation_fail,
         ))
 
         # TODO Fußbahn-Kriterium: seitliche Abweichung von der Kicklinie,
