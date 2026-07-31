@@ -17,7 +17,7 @@ class BandalChagi:
     KICK_KNEE_MIN = 150 
     IDLE_KNEE_MIN = 160
     IDLE_HIP_MIN = 160
-    RECHAMBER_TOLERANCE_DEG = 30
+    KNEE_RETURN_MIN = 80
     LIFT_THRESHHOLD_M = 0.05
     BASELINE_WINDOW_FRAMES = 10
 
@@ -52,6 +52,7 @@ class BandalChagi:
 
         self.standing_knee_angle = 0.0       # gesetzt in _compute_current_values, max in update
         self.max_knee_in_kick = 0.0           # max in _update_kick
+        self.min_knee_after_peak = 180.0
         self.min_knee_y = float("inf")                 # min in chamber + kick
         self.max_knee_y_in_kick = -float("inf")         # max in _update_kick
         self.max_standing_knee_angle = 0.0    # max in chamber + kick + rechamber
@@ -150,16 +151,25 @@ class BandalChagi:
             self.reset()
 
 
+    def _leg_is_up(self):
+        return self.hip_flexion < self.CHAMBER_HIP_MAX
+
     def _update_kick(self, frame_index):
-        self.max_knee_in_kick = max(self.max_knee_in_kick, self.knee_angle)
+        if self.knee_angle > self.max_knee_in_kick:
+            self.max_knee_in_kick = self.knee_angle
+            self.min_knee_after_peak = self.knee_angle
+
         self.min_knee_y = min(self.min_knee_y, self._knee_y)
         self.max_knee_y_in_kick = max(self.max_knee_y_in_kick, self._knee_y)
         self.max_standing_knee_angle = max(self.max_standing_knee_angle, self.standing_knee_angle)
 
         self.max_hip_alignment = max(self.max_hip_alignment, self.hip_alignment)
 
-        # transition back to chamber if knee and hip angles return to chamber range during kick
-        if abs(self.knee_angle - self.min_knee_in_chamber) <= self.RECHAMBER_TOLERANCE_DEG and abs(self.hip_flexion - self.min_hip_in_chamber) <= self.RECHAMBER_TOLERANCE_DEG:
+        leg_up = self._leg_is_up()
+        if leg_up:
+            self.min_knee_after_peak = min(self.min_knee_after_peak, self.knee_angle)
+
+        if leg_up and (self.max_knee_in_kick - self.knee_angle) >= self.KNEE_RETURN_MIN:
             self._transition_to("rechamber", frame_index)
         elif self.knee_angle > self.IDLE_KNEE_MIN and self.hip_flexion > self.IDLE_HIP_MIN:
             self._transition_to("idle", frame_index)
@@ -172,6 +182,9 @@ class BandalChagi:
         self.min_knee_in_rechamber = min(self.min_knee_in_rechamber, self.knee_angle)
         self.min_hip_in_rechamber = min(self.min_hip_in_rechamber, self.hip_flexion)
         #self.max_standing_knee_angle = max(self.max_standing_knee_angle, self.standing_knee_angle)
+
+        if self._leg_is_up():
+            self.min_knee_after_peak = min(self.min_knee_after_peak, self.knee_angle)
 
         # transition back to idle, if the person lowers the leg again
         if self.knee_angle > self.IDLE_KNEE_MIN and self.hip_flexion > self.IDLE_HIP_MIN:
@@ -219,6 +232,25 @@ class BandalChagi:
         results = []
 
         results.append(self._graded(
+                            "knee_extension", "Beinstreckung", self.max_knee_in_kick,
+                            fail_at=130, ideal_at=160,
+                            ok="Bein voll gestreckt.",
+                            fail="Bein nicht vollständig gestreckt.",
+                        ))
+        
+        if not self.kick_detected:
+                    return results
+
+        results.append(self._graded(
+                    "hip_alignment", "Hüftrotation", self.max_hip_alignment,
+                    fail_at=30, ideal_at=70,
+                    ok="Hüfte gut rotiert.",
+                    fail="Hüfte nicht rotiert — beim Bandal muss die Hüfte rotieren.",
+                ))
+        if self.max_hip_alignment < 30:
+                    return results
+
+        results.append(self._graded(
             "chamber_depth",
             "Chamber Winkel",
             self.min_knee_in_chamber,
@@ -238,26 +270,6 @@ class BandalChagi:
             fail="Hüfte nicht weit genug gebeugt",
         ))
 
-        if not self.kick_detected:
-            return results
-
-        results.append(self._graded(
-            "hip_alignment", "Hüftrotation", self.max_hip_alignment,
-            fail_at=30, ideal_at=70,
-            ok="Hüfte gut rotiert.",
-            fail="Hüfte nicht rotiert — beim Bandal muss die Hüfte rotieren.",
-        ))
-
-        if self.max_hip_alignment < 30:
-            return results
-
-        results.append(self._graded(
-            "knee_extension", "Beinstreckung", self.max_knee_in_kick,
-            fail_at=130, ideal_at=170,
-            ok="Bein voll gestreckt.",
-            fail="Bein nicht vollständig gestreckt.",
-        ))
-
         knee_drop = self._knee_drop()
         results.append(self._graded(
             "knee_height", "Kniehöhe", knee_drop,
@@ -273,11 +285,12 @@ class BandalChagi:
             fail="Standbein durchgestreckt. Eine leichte Beugung verbessert Balance.",
         ))
 
-        rechamber_done = any(p == "rechamber" for (p, _) in self.phases_log)
-        results.append(self._boolean_criterium(
-            "rechamber", "Rechamber", rechamber_done,
+        knee_return = max(0.0, self.max_knee_in_kick - self.min_knee_after_peak)
+        results.append(self._graded(
+            "rechamber", "Rechamber", knee_return,
+            fail_at=10, ideal_at=60,
             ok="Rechamber durchgeführt.",
-            fail="Rechamber vergessen: Knie nach dem Treffen zurückziehen.",
+            fail="Knie nach dem Treffen weiter zurückziehen, bevor du absetzt.",
         ))
 
         return results

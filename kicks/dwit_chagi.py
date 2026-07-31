@@ -18,7 +18,8 @@ class DwitChagi:
     KICK_KNEE_MIN = 100
     IDLE_KNEE_MIN = 160
     IDLE_HIP_MIN = 160
-    RECHAMBER_TOLERANCE_DEG = 40
+    KNEE_RETURN_MIN = 35
+    RECHAMBER_FOOT_HIGH = 0.25
     LIFT_THRESHHOLD_M = 0.05
     BASELINE_WINDOW_FRAMES = 10
 
@@ -42,7 +43,6 @@ class DwitChagi:
     FOOT_HIGH_MIN = 0.30       # Fuß gilt als "oben"
     FOOT_LOW_MAX = 0.15        # Fuß gilt als abgesetzt
     KICK_GAP_MIN = 0.45        # min. horizontaler Fußabstand
-    CHAMBER_TIMEOUT_FRAMES = 45
 
     def __init__(self):
         # --- phases state ---
@@ -84,13 +84,13 @@ class DwitChagi:
 
         # --- Min/Max for Kick ---
         self.max_knee_in_kick = 0.0
+        self.min_knee_after_peak = 180.0
         self.min_knee_y = float("inf")
         self.max_knee_y_in_kick = -float("inf")
         self.max_standing_knee_angle = 0.0
         self.min_foot_gap = float("inf")
         self.max_foot_gap_in_kick = 0.0   # wie weit der Fuß rausging (für Rechamber-Erkennung)
         self.max_foot_height_in_chamber = 0.0
-        self._chamber_frames = 0
 
         # --- Min/Max for Rechamber ---
         self.min_knee_in_rechamber = 180.0
@@ -206,11 +206,9 @@ class DwitChagi:
             self._transition_to("chamber", frame_index)
 
     def _update_rotation(self, frame_index):
-        self._chamber_frames += 1
 
         # sobald das Knie angezogen wird -> Chamber
         if self.knee_angle < self.CHAMBER_KNEE_MAX:
-            self._chamber_frames = 0
             self._transition_to("chamber", frame_index)
 
     def _update_chamber(self, frame_index):
@@ -219,11 +217,10 @@ class DwitChagi:
         self.min_knee_y = min(self.min_knee_y, self._knee_y)
         self.min_foot_gap = min(self.min_foot_gap, self._foot_gap)
         self.max_foot_height_in_chamber = max(self.max_foot_height_in_chamber, self._foot_height)
-        self._chamber_frames += 1
 
         # Abbruch zuerst: Beim Absetzen streckt sich das Knie auch, das ist kein Kick
         foot_was_up = self.max_foot_height_in_chamber > self.FOOT_HIGH_MIN
-        if (foot_was_up and self._foot_height < self.FOOT_LOW_MAX) or self._chamber_frames > self.CHAMBER_TIMEOUT_FRAMES:
+        if (foot_was_up and self._foot_height < self.FOOT_LOW_MAX):
             self._transition_to("idle", frame_index)
             self.reset()
             return
@@ -232,10 +229,14 @@ class DwitChagi:
         if self._foot_gap_h > self.KICK_GAP_MIN and self._foot_height > self.FOOT_HIGH_MIN:
             self._transition_to("kick", frame_index)
 
+    def _leg_is_up(self):
+        return self._foot_height > self.RECHAMBER_FOOT_HIGH
+
     def _update_kick(self, frame_index):
         # Ausrichtung im Moment der max. Streckung festhalten (Treffer-Moment)
         if self.knee_angle > self.max_knee_in_kick:
             self.max_knee_in_kick = self.knee_angle
+            self.min_knee_after_peak = self.knee_angle
             self.hip_alignment_at_impact = self.hip_alignment
 
         self.min_knee_y = min(self.min_knee_y, self._knee_y)
@@ -245,10 +246,11 @@ class DwitChagi:
         self.max_foot_gap_in_kick = max(self.max_foot_gap_in_kick, self._foot_gap)
         self.max_hip_alignment = max(self.max_hip_alignment, self.hip_alignment)  # nur Debug
 
-        # Rechamber über den Fußabstand: erst raus, dann zurück ans Standbein
-        foot_kicked_out = self.max_foot_gap_in_kick > self.KICK_REACH_MIN
-        foot_returned = self._foot_gap < self.RECHAMBER_FOOT_GAP
-        if foot_kicked_out and foot_returned:
+        leg_up = self._leg_is_up()
+        if leg_up:
+            self.min_knee_after_peak = min(self.min_knee_after_peak, self.knee_angle)
+
+        if leg_up and (self.max_knee_in_kick - self.knee_angle) >= self.KNEE_RETURN_MIN:
             self._transition_to("rechamber", frame_index)
         elif self.knee_angle > self.IDLE_KNEE_MIN and self.hip_flexion > self.IDLE_HIP_MIN:
             self._transition_to("idle", frame_index)
@@ -260,6 +262,9 @@ class DwitChagi:
         self.min_knee_in_rechamber = min(self.min_knee_in_rechamber, self.knee_angle)
         self.min_hip_in_rechamber = min(self.min_hip_in_rechamber, self.hip_flexion)
         self.max_standing_knee_angle = max(self.max_standing_knee_angle, self.standing_knee_angle)
+
+        if self._leg_is_up():
+            self.min_knee_after_peak = min(self.min_knee_after_peak, self.knee_angle)
 
         # zurück in idle, sobald das Bein wieder abgesetzt wird
         if self.knee_angle > self.IDLE_KNEE_MIN:
@@ -284,7 +289,6 @@ class DwitChagi:
         self._rotation_at_best_align = None
         self.max_foot_gap_in_kick = 0.0
         self.max_foot_height_in_chamber = 0.0
-        self._chamber_frames = 0
 
     @staticmethod
     def _graded(name, label, value, fail_at, ideal_at, ok, fail, value_display=None):
@@ -332,6 +336,8 @@ class DwitChagi:
 
         if self.max_over_rotation > self.OVER_ROTATION_FAIL:
             rotation_fail = "Zu weit durchgedreht. Das ist eher ein Spinning Side Kick"
+        else:
+            rotation_fail = "Zu wenig eingedreht — beim Treffer muss der Rücken zum Ziel zeigen."
 
         results.append(self._graded(
             "body_rotation", "Körperdrehung", self.hip_alignment_at_impact,
@@ -350,11 +356,12 @@ class DwitChagi:
             fail="Standbein durchgestreckt. Eine leichte Beugung verbessert Balance.",
         ))
 
-        rechamber_done = any(p == "rechamber" for (p, _) in self.phases_log)
-        results.append(self._boolean_criterium(
-            "rechamber", "Rechamber", rechamber_done,
+        knee_return = max(0.0, self.max_knee_in_kick - self.min_knee_after_peak)
+        results.append(self._graded(
+            "rechamber", "Rechamber", knee_return,
+            fail_at=10, ideal_at=60,
             ok="Rechamber durchgeführt.",
-            fail="Rechamber vergessen: Knie nach dem Treffen zurückziehen.",
+            fail="Knie nach dem Treffen weiter zurückziehen, bevor du absetzt.",
         ))
 
         return results
