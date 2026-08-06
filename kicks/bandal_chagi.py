@@ -26,10 +26,10 @@ class BandalChagi:
     KNEE_LATERAL_MIN = 30
 
     # --- Quality ---
-    CHAMBER_QUALITY_KNEE_MAX = 110
-    CHAMBER_QUALITY_HIP_MAX = 110
+    CHAMBER_QUALITY_KNEE_MAX = 90
+    CHAMBER_QUALITY_HIP_MAX = 90
     KNEE_DROP_TOLERANCE_M = 0.15
-    STANDING_KNEE_MAX = 175
+    STANDING_KNEE_MAX = 165
 
     def __init__(self):
         # --- phases state ---
@@ -280,7 +280,7 @@ class BandalChagi:
 
         results.append(self._graded(
             "supporting_leg", "Standbein", self.max_standing_knee_angle,
-            fail_at=180, ideal_at=175,
+            fail_at=180, ideal_at=self.STANDING_KNEE_MAX,
             ok="Balance gut: Standbein leicht gebeugt",
             fail="Standbein durchgestreckt. Eine leichte Beugung verbessert Balance.",
         ))

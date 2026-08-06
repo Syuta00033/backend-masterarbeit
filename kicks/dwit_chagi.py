@@ -28,9 +28,9 @@ class DwitChagi:
     JUMP_FILTER_DEG = 60   # größerer Sprung in hip_alignment = Flip -> verwerfen
 
     # --- Quality ---
-    CHAMBER_QUALITY_KNEE_MAX = 80
+    CHAMBER_QUALITY_KNEE_MAX = 55
     KNEE_DROP_TOLERANCE_M = 0.15
-    STANDING_KNEE_MAX = 175
+    STANDING_KNEE_MAX = 165
     BODY_ROTATION_FAIL = 110   # Ausrichtung beim Treffer (~180 = Rücken zum Ziel)
     BODY_ROTATION_IDEAL = 170
     OVER_ROTATION_FAIL = 60    # ab hier gilt die Drehung als durchgedreht
@@ -351,7 +351,7 @@ class DwitChagi:
 
         results.append(self._graded(
             "supporting_leg", "Standbein", self.max_standing_knee_angle,
-            fail_at=180, ideal_at=175,
+            fail_at=180, ideal_at=self.STANDING_KNEE_MAX,
             ok="Balance gut: Standbein leicht gebeugt",
             fail="Standbein durchgestreckt. Eine leichte Beugung verbessert Balance.",
         ))

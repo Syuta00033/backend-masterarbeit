@@ -21,10 +21,10 @@ class ApChagi:
     BASELINE_WINDOW_FRAMES = 10
 
     # --- Quality ---
-    CHAMBER_QUALITY_KNEE_MAX = 90
-    CHAMBER_QUALITY_HIP_MAX = 100
+    CHAMBER_QUALITY_KNEE_MAX = 60
+    CHAMBER_QUALITY_HIP_MAX = 80
     KNEE_DROP_TOLERANCE_M = 0.15
-    STANDING_KNEE_MAX = 175
+    STANDING_KNEE_MAX = 165
 
     def __init__(self):
         # --- phases state ---
@@ -266,7 +266,7 @@ class ApChagi:
 
         results.append(self._graded(
             "hip_alignment", "Hüftrotation", self.max_hip_alignment,
-            fail_at=100, ideal_at=30,
+            fail_at=90, ideal_at=30,
             ok="Hüfte nicht überdreht.",
             fail="Hüfte zu sehr rotiert. Weniger Hüftrotation für Ap Chagi.",
         ))
@@ -281,7 +281,7 @@ class ApChagi:
         
         results.append(self._graded(
             "supporting_leg", "Standbein", self.max_standing_knee_angle,
-            fail_at=180, ideal_at=175,
+            fail_at=180, ideal_at=self.STANDING_KNEE_MAX,
             ok="Balance gut: Standbein leicht gebeugt",
             fail="Standbein durchgestreckt. Eine leichte Beugung verbessert Balance.",
         ))
