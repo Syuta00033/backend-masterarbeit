@@ -61,3 +61,15 @@ def kick_direction(wl, kicking_side):
 
 def hip_kick_angle(wl, kicking_side):
     return abs(angle_difference(pelvis_facing(wl), kick_direction(wl, kicking_side)))
+
+
+# for bandal chagi if the upper body is leaning back
+def thigh_elevation(wl, side):
+    hip = landmark_to_array(wl[L_HIP if side == "left" else R_HIP])
+    knee = landmark_to_array(wl[L_KNEE if side == "left" else R_KNEE])
+    thigh = knee - hip
+    n = np.linalg.norm(thigh)
+    if n < 1e-6:
+        return 0.0
+    cos = float(np.dot(thigh, np.array([0.0, 1.0, 0.0])) / n)
+    return float(np.degrees(np.arccos(np.clip(cos, -1.0, 1.0))))

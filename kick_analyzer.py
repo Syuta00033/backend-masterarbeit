@@ -38,7 +38,9 @@ class KickAnalyzer:
         text(f"Knee Angle: {int(self.kick.knee_angle)}", 60)
         text(f"Hip Flexion: {int(self.kick.hip_flexion)}", 90)
         text(f"Side: {self.kicking_side}", 120)
-        text(f"Torso Angle: {int(self.kick.torso_angle)}", 150)
+
+        if self.kick.NAME != "dwit_chagi":
+            text(f"kick thigh angle: {int(self.kick.thigh_elevation)}", 150)
 
         if self.kick.kick_start_frame is not None:
             text(f"Start Frame: {self.kick.kick_start_frame}", 180)

@@ -2,7 +2,7 @@
 from collections import deque
 import statistics
 
-from .geometry import L_KNEE, R_KNEE, hip_kick_angle, leg_angles, L_ANKLE, R_ANKLE, score_linear
+from .geometry import L_KNEE, R_KNEE, hip_kick_angle, leg_angles, L_ANKLE, R_ANKLE, score_linear, thigh_elevation
 import numpy as np
 
 
@@ -17,12 +17,14 @@ class ApChagi:
     IDLE_KNEE_MIN = 150
     IDLE_HIP_MIN = 150
     KNEE_RETURN_MIN = 80
+    LEG_UP_MIN = 45
     LIFT_THRESHHOLD_M = 0.05
     BASELINE_WINDOW_FRAMES = 10
 
     # --- Quality ---
     CHAMBER_QUALITY_KNEE_MAX = 60
-    CHAMBER_QUALITY_HIP_MAX = 80
+    THIGH_ELEVATION_FAIL = 50
+    THIGH_ELEVATION_IDEAL = 90
     KNEE_DROP_TOLERANCE_M = 0.15
     STANDING_KNEE_MAX = 165
 
@@ -37,6 +39,7 @@ class ApChagi:
         # --- active values for current frame ---
         self.knee_angle = 0.0
         self.hip_flexion = 0.0
+        self.thigh_elevation = 0.0
         self.standing_knee_angle = 0.0
         self.torso_angle = 0.0
         self._knee_y = 0.0
@@ -45,6 +48,7 @@ class ApChagi:
         # --- Min/Max for Chamber ---
         self.min_knee_in_chamber = 180.0
         self.min_hip_in_chamber = 180.0
+        self.max_thigh_elevation = 0.0
 
         # --- Min/Max for Kick ---
         self.max_knee_in_kick = 0.0
@@ -91,6 +95,8 @@ class ApChagi:
         # compute knee and hip angles for the kicking leg
         self.knee_angle, self.hip_flexion = leg_angles(wl, kicking_side)
 
+        self.thigh_elevation = thigh_elevation(wl, kicking_side)
+
         # compute knee angle for standing leg to check for overextension
         standing_side = "right" if kicking_side == "left" else "left"
         self.standing_knee_angle, _ = leg_angles(wl, standing_side)
@@ -134,25 +140,26 @@ class ApChagi:
             self.kick_start_frame = frame_index
 
         # change to chamber phase 
-        if self.knee_angle < self.CHAMBER_KNEE_MAX and self.hip_flexion < self.CHAMBER_HIP_MAX:
+        if self.knee_angle < self.CHAMBER_KNEE_MAX and self.thigh_elevation > self.LEG_UP_MIN:
             self._transition_to("chamber", frame_index)
 
 
     def _update_chamber(self, frame_index):
         self.min_knee_in_chamber = min(self.min_knee_in_chamber, self.knee_angle)
         self.min_hip_in_chamber = min(self.min_hip_in_chamber, self.hip_flexion)
+        self.max_thigh_elevation = max(self.max_thigh_elevation, self.thigh_elevation)
         self.min_knee_y = min(self.min_knee_y, self._knee_y)
 
         # change to kick phase
-        if self.knee_angle > self.KICK_KNEE_MIN and self.hip_flexion < self.CHAMBER_HIP_MAX:
+        if self.knee_angle > self.KICK_KNEE_MIN and self.thigh_elevation > self.LEG_UP_MIN:
             self._transition_to("kick", frame_index)
-        elif self.knee_angle > self.IDLE_KNEE_MIN and self.hip_flexion > self.IDLE_HIP_MIN: # Abbruch zurück in Idle, wenn die Person doch nicht kickt sondern z.B. nur das Knie hebt
+        elif self.knee_angle > self.IDLE_KNEE_MIN and self.thigh_elevation < self.THIGH_ELEVATION_FAIL: # Abbruch zurück in Idle, wenn die Person doch nicht kickt sondern z.B. nur das Knie hebt
             self._transition_to("idle", frame_index)
             self.reset()
 
 
     def _leg_is_up(self):
-        return self.hip_flexion < self.CHAMBER_HIP_MAX
+        return self.thigh_elevation > self.LEG_UP_MIN
 
     def _update_kick(self, frame_index):
         if self.knee_angle > self.max_knee_in_kick:
@@ -171,7 +178,7 @@ class ApChagi:
 
         if leg_up and (self.max_knee_in_kick - self.knee_angle) >= self.KNEE_RETURN_MIN:
             self._transition_to("rechamber", frame_index)
-        elif self.knee_angle > self.IDLE_KNEE_MIN and self.hip_flexion > self.IDLE_HIP_MIN:
+        elif self.knee_angle > self.IDLE_KNEE_MIN and self.thigh_elevation < self.THIGH_ELEVATION_FAIL: # Abbruch zurück in Idle, wenn die Person doch nicht kickt sondern z.B. nur das Knie hebt
             self._transition_to("idle", frame_index)
             if self.kick_start_frame is not None:
                 self.last_kick_duration_frames = frame_index - self.kick_start_frame
@@ -186,7 +193,7 @@ class ApChagi:
             self.min_knee_after_peak = min(self.min_knee_after_peak, self.knee_angle)
 
         # transition back to idle, if the person lowers the leg again
-        if self.knee_angle > self.IDLE_KNEE_MIN and self.hip_flexion > self.IDLE_HIP_MIN:
+        if self.knee_angle > self.IDLE_KNEE_MIN and self.thigh_elevation < self.THIGH_ELEVATION_FAIL:
             self._transition_to("idle", frame_index)
             if self.kick_start_frame is not None:
                 self.last_kick_duration_frames = frame_index - self.kick_start_frame
@@ -254,11 +261,11 @@ class ApChagi:
         results.append(self._graded(
             "hip_lift",
             "Hüftbeugung",
-            self.min_hip_in_chamber,
-            fail_at=self.CHAMBER_HIP_MAX,
-            ideal_at=self.CHAMBER_QUALITY_HIP_MAX,
-            ok="Hüfte ausreichend gehoben.",
-            fail="Hüfte nicht weit genug gebeugt",
+            self.max_thigh_elevation,
+            fail_at=self.THIGH_ELEVATION_FAIL,
+            ideal_at=self.THIGH_ELEVATION_IDEAL,
+            ok="Knie ausreichend hoch angezogen.",
+            fail="Knie höher anziehen — der Oberschenkel sollte mindestens waagerecht sein.",
         ))
 
 
