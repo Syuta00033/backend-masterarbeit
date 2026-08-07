@@ -87,7 +87,7 @@ class DwitChagi:
         self.min_knee_after_peak = 180.0
         self.min_knee_y = float("inf")
         self.max_knee_y_in_kick = -float("inf")
-        self.max_standing_knee_angle = 0.0
+        self.standing_knee_history = []
         self.min_foot_gap = float("inf")
         self.max_foot_gap_in_kick = 0.0   # wie weit der Fuß rausging (für Rechamber-Erkennung)
         self.max_foot_height_in_chamber = 0.0
@@ -241,7 +241,7 @@ class DwitChagi:
 
         self.min_knee_y = min(self.min_knee_y, self._knee_y)
         self.max_knee_y_in_kick = max(self.max_knee_y_in_kick, self._knee_y)
-        self.max_standing_knee_angle = max(self.max_standing_knee_angle, self.standing_knee_angle)
+        self.standing_knee_history.append(self.standing_knee_angle)
         self.min_foot_gap = min(self.min_foot_gap, self._foot_gap)
         self.max_foot_gap_in_kick = max(self.max_foot_gap_in_kick, self._foot_gap)
         self.max_hip_alignment = max(self.max_hip_alignment, self.hip_alignment)  # nur Debug
@@ -261,7 +261,6 @@ class DwitChagi:
     def _update_rechamber(self, frame_index):
         self.min_knee_in_rechamber = min(self.min_knee_in_rechamber, self.knee_angle)
         self.min_hip_in_rechamber = min(self.min_hip_in_rechamber, self.hip_flexion)
-        self.max_standing_knee_angle = max(self.max_standing_knee_angle, self.standing_knee_angle)
 
         if self._leg_is_up():
             self.min_knee_after_peak = min(self.min_knee_after_peak, self.knee_angle)
@@ -349,8 +348,9 @@ class DwitChagi:
         # TODO Fußbahn-Kriterium: seitliche Abweichung von der Kicklinie,
         # auf Beinlänge normalisiert (min_foot_gap misst den Fehler nicht)
 
+        standing_knee = statistics.median(self.standing_knee_history) if self.standing_knee_history else 180.0
         results.append(self._graded(
-            "supporting_leg", "Standbein", self.max_standing_knee_angle,
+            "supporting_leg", "Standbein", standing_knee,
             fail_at=180, ideal_at=self.STANDING_KNEE_MAX,
             ok="Balance gut: Standbein leicht gebeugt",
             fail="Standbein durchgestreckt. Eine leichte Beugung verbessert Balance.",
