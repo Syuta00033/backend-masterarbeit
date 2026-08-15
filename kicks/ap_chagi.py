@@ -67,7 +67,7 @@ class ApChagi:
 
         # hip rotation/alignment
         self.hip_alignment = 0.0
-        self.max_hip_alignment = 0.0
+        self.hip_alignment_at_impact = 0.0
 
         # fps
         self.fps = 30
@@ -165,12 +165,11 @@ class ApChagi:
         if self.knee_angle > self.max_knee_in_kick:
             self.max_knee_in_kick = self.knee_angle
             self.min_knee_after_peak = self.knee_angle
+            self.hip_alignment_at_impact = self.hip_alignment
 
         self.min_knee_y = min(self.min_knee_y, self._knee_y)
         self.max_knee_y_in_kick = max(self.max_knee_y_in_kick, self._knee_y)
         self.standing_knee_history.append(self.standing_knee_angle)
-
-        self.max_hip_alignment = max(self.max_hip_alignment, self.hip_alignment)
 
         leg_up = self._leg_is_up()
         if leg_up:
@@ -270,7 +269,7 @@ class ApChagi:
 
 
         results.append(self._graded(
-            "hip_alignment", "Hüftrotation", self.max_hip_alignment,
+            "hip_alignment", "Hüftrotation", self.hip_alignment_at_impact,
             fail_at=90, ideal_at=30,
             ok="Hüfte nicht überdreht.",
             fail="Hüfte zu sehr rotiert. Weniger Hüftrotation für Ap Chagi.",

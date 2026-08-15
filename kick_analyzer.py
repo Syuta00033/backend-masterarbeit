@@ -61,10 +61,9 @@ class KickAnalyzer:
         text(f"Visibility: min {min_vis:.2f}  avg {avg_vis:.2f}", 240, vis_color)
 
         text(f"Hip Alignment: {int(self.kick.hip_alignment)}", 270, (0, 255, 255))
-        text(f"Max Alignment: {int(self.kick.max_hip_alignment)}", 300, (0, 255, 255))
+        text(f"Impact Align: {int(self.kick.hip_alignment_at_impact)}", 300, (0, 255, 255))
 
         if self.kick.NAME == "dwit_chagi":
-            text(f"Impact Align: {int(self.kick.hip_alignment_at_impact)}", 330, (0, 200, 255))
             text(f"Over-Rot: {int(self.kick.max_over_rotation)}", 360, (0, 200, 255))
             text(f"Total-Rot: {int(self.kick.total_rotation)}", 390, (0, 200, 255))
             text(f"Foot Gap: {self.kick._foot_gap:.2f}  (max {self.kick.max_foot_gap_in_kick:.2f})", 420, (0, 200, 255), 0.7)
