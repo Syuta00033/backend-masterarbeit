@@ -33,6 +33,8 @@ class BandalChagi:
     KNEE_DROP_TOLERANCE_M = 0.15
     STANDING_KNEE_MAX = 165
 
+    JUMP_FILTER_DEG = 60
+
     def __init__(self):
         # --- phases state ---
         self.phase = "idle"
@@ -74,6 +76,9 @@ class BandalChagi:
         self.prev_foot_pos = None
         self.velocity_history = deque(maxlen=3)  # store last 5 foot velocities for smoothing
 
+        self.prev_alignment = None
+        self.hip_alignment_at_impact = 0.0
+
     def update(self, wl, kicking_side, frame_index):
         self._compute_current_values(wl, kicking_side)
 
@@ -101,7 +106,10 @@ class BandalChagi:
         self.standing_knee_angle, _ = leg_angles(wl, standing_side)
 
         raw = hip_kick_angle(wl, kicking_side)
-        self.hip_alignment = min(raw, 180 - raw)
+        if self.prev_alignment is not None and abs(raw - self.prev_alignment) > self.JUMP_FILTER_DEG:
+            raw = self.prev_alignment
+        self.hip_alignment = raw
+        self.prev_alignment = raw
 
         # check y position of kicking knee
         kicking_knee_idx = L_KNEE if kicking_side == "left" else R_KNEE
@@ -164,6 +172,7 @@ class BandalChagi:
         if self.knee_angle > self.max_knee_in_kick:
             self.max_knee_in_kick = self.knee_angle
             self.min_knee_after_peak = self.knee_angle
+            self.hip_alignment_at_impact = self.hip_alignment
 
         self.min_knee_y = min(self.min_knee_y, self._knee_y)
         self.max_knee_y_in_kick = max(self.max_knee_y_in_kick, self._knee_y)
@@ -236,6 +245,13 @@ class BandalChagi:
     def evaluate(self):
         results = []
 
+        rotation_error = abs(self.hip_alignment_at_impact - 90)
+
+        if self.hip_alignment_at_impact > 90:
+            rotation_fail = "Hüfte zu weit durchgedreht."
+        else:
+            rotation_fail = "Hüfte nicht weit genug gedreht."
+
         results.append(self._graded(
                             "knee_extension", "Beinstreckung", self.max_knee_in_kick,
                             fail_at=130, ideal_at=160,
@@ -247,13 +263,12 @@ class BandalChagi:
                     return results
 
         results.append(self._graded(
-                    "hip_alignment", "Hüftrotation", self.max_hip_alignment,
-                    fail_at=30, ideal_at=70,
+                    "hip_alignment", "Hüftrotation", rotation_error,
+                    fail_at=60, ideal_at=20,
+                    value_display=round(self.hip_alignment_at_impact, 1),
                     ok="Hüfte gut rotiert.",
-                    fail="Hüfte nicht rotiert — beim Bandal muss die Hüfte rotieren.",
+                    fail=rotation_fail,
                 ))
-        if self.max_hip_alignment < 30:
-                    return results
 
         results.append(self._graded(
             "chamber_depth",
