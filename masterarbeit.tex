@@ -1,0 +1,1329 @@
+\documentclass[intern]{cgMA}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{float}
+\usepackage{pdfpages}
+\usepackage[english,ngerman]{babel}
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+\title{Konzeption und Entwicklung einer kamerabasierten Analyse von Taekwondo-Techniken in einer Trainings- und Lern-App}
+\author{William Hong}
+\zweitgutachter{Dr. rer. nat. habil. Sabine Bauer}
+\zweitgutachterInfo{(Head of General University Sports)}
+\externLogo{7.46cm}{logos/ExternLogoPlaceholder}
+\externName{DIN: NewTechnologies}
+
+\begin{document}
+\maketitle
+
+\clearpage
+\section*{Erklärung zur Verwendung von KI-Werkzeugen}
+Im Rahmen der Erstellung dieser Arbeit wurde das generative KI-Werkzeug
+Claude unterstützend eingesetzt. Der Einsatz beschränkte sich auf die allgemeine
+Recherche, den Diskurs konzeptioneller Ideen für den Aufbau des Systems,
+Hilfestellungen zur programmatischen Herangehensweise an mathematische Probleme
+und zur beispielhaften Anwendung des OpenCV-Frameworks sowie auf die
+Generierung erster Programmcode-Entwürfe. Sämtliche generierte Inhalte wurden
+eigenständig überprüft, überarbeitet und in den Gesamtkontext der Arbeit integriert.
+Der Aufbau des Systems und dessen programmatische Umsetzung, Validierung
+und Evaluation wurden eigenständig durchgeführt. Die Verantwortung für
+diese wissenschaftliche Arbeit liegt ausschließlich beim Verfasser.
+\clearpage
+
+\begin{abstract}
+Eine saubere technische Ausführung ist beim Erlernen von Taekwondo Kicks besonders wichtig. Gerade außerhalb des Trainings fehlt jedoch häufig die direkte Rückmeldung durch eine Trainerin oder einen Trainer. Diese Arbeit beschäftigt sich deshalb mit der Frage, ob sich die Ausführung von Taekwondo Kicks anhand von Smartphone Aufnahmen automatisch analysieren und bewerten lässt.
+
+Dafür wurde eine webbasierte Anwendung entwickelt, die drei Taekwondo Techniken untersucht. Dazu gehören der \textit{Front Kick}, der \textit{Roundhouse Kick} und der \textit{Spinning Back Kick}. Die Bewegungen werden mithilfe der markerlosen \textit{Pose Estimation} von MediaPipe erfasst. Auf Grundlage der dabei erkannten \textit{Landmarks} des Körpers werden unter anderem Gelenkwinkel, Positionen und die Körperausrichtung bestimmt. Eine Zustandsmaschine ordnet die einzelnen Abschnitte der Bewegung verschiedenen Phasen zu. Die eigentliche Bewertung erfolgt anschließend regelbasiert anhand vorher festgelegter Kriterien und Schwellenwerte. Da die ausgeführte Technik vor der Analyse ausgewählt wird, muss die Anwendung die Technik selbst nicht erkennen.
+
+Der entwickelte Prototyp wurde mit 19 Taekwondo Trainierenden getestet. Dabei wurde eine hohe wahrgenommene Gebrauchstauglichkeit erreicht. Auf der \textit{System Usability Scale} wurde ein Mittelwert von 88,0 Punkten erzielt. Auch die Rückmeldungen zur Verständlichkeit und zum Nutzen der Anwendung fielen überwiegend positiv aus. Besonders die Hinweise zur Verbesserung der Technik wurden als hilfreich wahrgenommen. Gleichzeitig zeigte sich, dass zwar verständlich dargestellt wird, welches Kriterium erfüllt oder nicht erfüllt wurde, der genaue Weg zur daraus entstehenden Punktzahl für einige Teilnehmende noch nicht ausreichend nachvollziehbar war.
+
+Die Ergebnisse zeigen, dass sich Taekwondo Kicks grundsätzlich mithilfe von Smartphone Videos und markerloser Pose Estimation regelbasiert bewerten lassen. Gleichzeitig zeigen sich Grenzen bei Bewegungen mit starker Körperrotation. Dies betrifft insbesondere den \textit{Spinning Back Kick}, bei dem durch Verdeckungen und eine unvollständige Erfassung der Rotation größere Unsicherheiten entstehen können. Eine unabhängige Überprüfung der Bewertungen durch erfahrene Trainerinnen und Trainer wurde im Rahmen dieser Arbeit nicht durchgeführt. Deshalb kann auf Grundlage der vorliegenden Ergebnisse noch keine Aussage darüber getroffen werden, wie genau die berechneten Punktwerte die tatsächliche technische Qualität eines Kicks abbilden.
+ 
+\bigskip
+\noindent\textbf{Schlagwörter:} Taekwondo, markerlose Pose Estimation, MediaPipe, Bewegungsanalyse, regelbasierte Bewertung, Webanwendung
+\end{abstract}
+
+\begin{otherlanguage}{english}
+\begin{abstract}
+Proper technique is an important part of learning Taekwondo kicks. Outside regular training, however, direct feedback from a coach is often not available. This thesis therefore investigates whether the execution of Taekwondo kicks can be analyzed and evaluated automatically using smartphone recordings.
+
+For this purpose, a web based application was developed to analyze three Taekwondo techniques. These are the \textit{Front Kick}, the \textit{Roundhouse Kick}, and the \textit{Spinning Back Kick}. The movements are captured using markerless pose estimation with MediaPipe. Based on the detected body landmarks, joint angles, positions, and body orientation are calculated. A state machine is then used to divide the movement into different phases. The actual evaluation is performed using a rule based approach with predefined criteria and threshold values. Since the technique is selected before the analysis, the application does not have to recognize the performed technique automatically.
+
+The developed prototype was evaluated with 19 Taekwondo practitioners. The results showed a high level of perceived usability. The application achieved a mean score of 88.0 on the \textit{System Usability Scale}. The participants also rated the comprehensibility of the feedback and its usefulness positively. In particular, the suggestions for improving the technique were perceived as helpful. At the same time, the results showed that while the application clearly indicates which criteria were met or not met, the exact way in which the individual scores are calculated was not sufficiently clear to some participants.
+
+The results show that Taekwondo kicks can generally be evaluated using smartphone videos and markerless pose estimation with a rule based approach. At the same time, limitations become apparent for movements that involve substantial body rotation. This is particularly relevant for the \textit{Spinning Back Kick}, where occlusion and incomplete tracking of the rotation can lead to greater uncertainty. The evaluations were not independently assessed by experienced Taekwondo coaches as part of this study. Therefore, the present results do not allow a reliable conclusion about how accurately the calculated scores represent the actual technical quality of a kick.
+
+\bigskip
+\noindent\textbf{Keywords:} taekwondo, markerless pose estimation, MediaPipe, motion analysis, rule-based assessment, web application
+\end{abstract}
+\end{otherlanguage}
+
+\tableofcontents
+
+\clearpage
+
+\section{Einleitung}
+\subsection{Motivation}
+Im Bereich der Sportbiomechanik stellt die Analyse sportlicher Bewegungen ein wichtiges Werkzeug dar, um technikbestimmende Bewegungsmerkmale zu untersuchen und Rehabilitationsprozesse zu unterstützen \cite{Colyer2018}. Die hierfür etablierten Laborverfahren ermöglichen eine hohe Messgenauigkeit, sind aufgrund ihrer Anschaffungskosten und technischen Komplexität jedoch nur eingeschränkt für einen breiten Einsatz geeignet \cite{Edriss2025}. Hinzu kommen methodische Voraussetzungen, die einer routinemäßigen Anwendung für den alltäglichen Trainingsbetrieb im Wege stehen. So erfordert die Erfassung kinematischer Daten bei markerbasierten Verfahren die Anbringung von Markern am Körper sowie kontrollierte Aufnahmebedingungen und eine zeitintensive Nachbearbeitung \cite{Colyer2018}. Daraus ergibt sich ein zunehmendes Interesse an automatisierten, markerlosen Verfahren zur Bewegungsanalyse \cite{Colyer2018}.
+
+Fortschritte im Bereich der künstlichen Intelligenz haben in den vergangenen Jahren zu einer rasanten Entwicklung von Verfahren zur 2D- und 3D-Modellierung des menschlichen Körpers geführt \cite{Edriss2025}. Frei verfügbare Frameworks wie Openpose, MediaPipe und AlphaPose ermöglichen dabei die automatische Detektion von \textit{Keypoints} des Körpers in Videoaufnahmen und können mit handelsüblichen Kameras eingesetzt werden \cite{Edriss2025}. Auf Grundlage dieser \textit{Keypoints} lassen sich unter anderem kinematische Kenngrößen wie Gelenkwinkel aus Videoaufnahmen bestimmen. Dies wurde bereits in verschiedenen Studien zur Analyse sportlicher Bewegungen untersucht \cite{Edriss2025}. Auch die Verwendung eines handelsüblichen Smartphones als Aufnahmegerät wurde in diesem Zusammenhang untersucht \cite{Babouras2024}.
+
+Ein Anwendungsfeld für eine solche automatisierte Bewegungsanalyse sind Kampfsportarten. Echeverria und Santos \cite{Echeverria2021} begründen das damit, dass Kampfsporttechniken auf einem System von Bewegungen beruhen, die vorgegeben oder zumindest klar begrenzt sind und den Gesetzen der Physik folgen \cite{Echeverria2021}. Die Ausführung solcher Techniken ist somit durch definierte Bewegungsmerkmale charakterisiert, anhand derer eine korrekte Ausführung beschrieben werden kann. Hinzu kommt, dass ein Treffer im Wettkampf unter anderem davon abhängt, ob die Technik sauber ausgeführt wurde, und dass sich diese Ausführung erst über langes Üben einstellt \cite{Echeverria2021}.
+
+Im Taekwondo stehen insbesondere verschiedene Fußtechniken im Mittelpunkt, deren Ausführung durch komplexe biomechanische Bewegungsabläufe gekennzeichnet ist \cite{YilmazAtes2025}. Punkte werden erzielt, wenn ein Kick präzise und mit ausreichender Kraft den Rumpf oder den Kopf des Gegners trifft \cite{Falco2009}. Dabei ist das Verständnis der biomechanischen Eigenschaften dieser Techniken sowohl für die Optimierung der sportlichen Leistung als auch für die Reduktion des Verletzungsrisikos relevant \cite{YilmazAtes2025}. Beispielsweise untersuchten Falco et al. \cite{Falco2009} den Einfluss der Ausgangsdistanz auf die Ausführung des \textit{Roundhouse Kicks}. Dabei zeigte sich ein Einfluss der Ausgangsdistanz auf die Ausführungszeit, während sich die Aufprallkraft bei erfahrenen Wettkämpfern nicht signifikant unterschied \cite{Falco2009}. Solche Untersuchungen verdeutlichen die Bedeutung der Erfassung und Bewertung biomechanischer Merkmale bei der Analyse von Taekwondo-Techniken.
+
+Taekwondo-Techniken weisen darüber hinaus strukturelle Eigenschaften auf, die eine automatisierte Technikanalyse begünstigen. Insbesondere stellen einzelne Fußtechniken zeitlich begrenzte Bewegungsabläufe dar, die sich anhand charakteristischer Bewegungsphasen beschreiben lassen. So wurde beispielsweise der Taekwondo \textit{Roundhouse Kick} in biomechanischen Untersuchungen in mehrere aufeinanderfolgende Phasen unterteilt, die durch charakteristische Bewegungsereignisse definiert sind \cite{Gavagan2017}. Die zeitliche und strukturelle Gliederung einer Technik ermöglicht es, spezifische technische Merkmale einzelnen Bewegungsphasen zuzuordnen und auf dieser Grundlage zu bewerten. Für eine regelbasierte Technikanalyse bietet diese Struktur somit eine geeignete Grundlage, da für einzelne Bewegungsphasen spezifische Bewertungskriterien formuliert werden können.
+
+\subsection{Problemstellung}
+Im Trainingsalltag stößt die Technikkorrektur allerdings an praktische Grenzen. Eine einzelne Trainerin oder ein einzelner Trainer kann im Gruppentraining nicht alle Schülerinnen und Schüler gleichzeitig im Blick haben, sodass ein großer Teil der Wiederholungen ohne Rückmeldung bleibt. Wang et al. \cite{Wang2026} beschreiben für das Taekwondo-Training, dass eine Lehrkraft in begrenzter Zeit 30 bis 40 Schülerinnen und Schüler betreut und unter diesen Bedingungen nur an wenigen Stellen verbale Rückmeldung geben kann \cite{Wang2026}. Außerhalb betreuter Trainingseinheiten steht den Trainierenden hingegen häufig kein unmittelbares fachliches Feedback zur Verfügung. Mündliches Feedback bezieht sich zudem auf die jeweilige Ausführung und wird ohne zusätzliche Dokumentation nicht dauerhaft festgehalten. Dadurch ist eine spätere Nachverfolgung der technischen Entwicklung erschwert.
+
+Ein möglicher Ansatz zur Selbstkontrolle ist die Nutzung eines Spiegels in den Trainingshallen. Dieser ermöglicht zwar unmittelbar während der Ausführung eine visuelle Rückmeldung, setzt jedoch voraus, dass die Ausführenden diese Rückmeldung während der Bewegung wahrnehmen und interpretieren können. Eine Videoaufnahme kann hier weiterhelfen, da sich der Bewegungsablauf im Nachhinein in Ruhe und wiederholt betrachten lässt. Dass videobasiertes visuelles Feedback das motorische Lernen unterstützen kann, ist für den Sportunterricht belegt \cite{Moedinger2022}. Eine Videoaufnahme dokumentiert zwar die tatsächliche Bewegungsausführung, liefert jedoch nicht automatisch eine Bewertung ihrer technischen Qualität. Für eine eigenständige Beurteilung ist daher zunächst Wissen darüber erforderlich, anhand welcher Merkmale die technische Ausführung bewertet werden kann.
+
+Ein möglicher Weg besteht darin, die Bewertung der Ausführung zu automatisieren. Systeme dieser Art existieren für einzelne Bewegungsfelder bereits \cite{Pham2022}. El-Rajab et al. \cite{ElRajab2025} weisen jedoch darauf hin, dass die automatische Bewertung der Bewegungsqualität bislang nur begrenzt untersucht wurde \cite{ElRajab2025}. Für Taekwondo liegt seit Kurzem ein erster Ansatz vor, der drei Grundtechniken aus Smartphone-Videos bewertet, die Erkennung der Technik jedoch einem neuronalen Netz überlässt \cite{Wang2026}. Ob und in welchem Umfang sich Drehtechniken mit ausgeprägter Körperrotation auf Grundlage von Smartphone-Videos automatisiert hinsichtlich ihrer technischen Ausführung bewerten lassen, ist bislang jedoch weitgehend offen.
+
+\subsection{Zielsetzung}
+Ziel dieser Arbeit ist die Entwicklung eines Prototyps, der einen mit einem Smartphone aufgenommenen Kick mithilfe markerloser \textit{Pose Estimation} analysiert und anhand festgelegter biomechanischer Kriterien bewertet. Betrachtet werden drei Techniken: Der \textit{Front Kick}, \textit{Roundhouse Kick} und \textit{Spinning Back Kick} als Drehtechnik. Die zu analysierende Technik wird vor der Analyse vom Nutzer ausgewählt. Dadurch kann die Bewertung regelbasiert erfolgen, ohne dass für die Technikerkennung ein trainiertes Modell erforderlich ist. Die Rückmeldung basiert somit auf definierten Messgrößen und festgelegten Schwellenwerten. Neben der Information, ob ein Kick die festgelegten Kriterien erfüllt, soll die Anwendung auch die zugrunde liegenden Bewertungskriterien transparent darstellen.
+
+Die Schwellenwerte, ab denen ein Kriterium als erfüllt gilt, wurden auf Grundlage der Technikliteratur sowie aus der Trainingspraxis abgeleitet, bislang jedoch nicht empirisch überprüft. Die Arbeit untersucht daher, inwieweit sich Merkmale einer korrekten Kickausführung aus Smartphone-Aufnahmen mithilfe markerloser \textit{Pose Estimation} erfassen und regelbasiert bewerten lassen und welche Grenzen sich dabei insbesondere für Techniken mit ausgeprägter Körperrotation ergeben. Die Aufnahme erfolgt mit einem Smartphone aus einer seitlichen oder um 45 Grad versetzten Perspektive. Pro Video wird eine einzelne Kickausführung analysiert. 
+
+Neben der Kickanalyse umfasst der Prototyp eine ergänzende Vokabelfunktion zur Unterstützung der Vorbereitung auf Taekwondo-Gürtelprüfungen. Dabei werden relevante koreanische Begriffe nach Gurtgrad geordnet dargestellt und über eine Abfragefunktion wiederholt. Diese Funktion ist nicht Gegenstand der wissenschaftlichen Untersuchung und wird daher im weiteren Verlauf der Arbeit nur ergänzend betrachtet.
+
+\subsection{Überblick der Arbeit}
+Die Arbeit gliedert sich in sechs Kapitel. Kapitel 2 behandelt die Grundlagen, also die technischen Merkmale der drei untersuchten Kicks und die Funktionsweise markerloser Pose Estimation sowie die Frage, wie sich aus Positionsdaten überhaupt eine Bewertung ableiten lässt. Kapitel 3 gibt einen Überblick über verwandte Arbeiten. Kapitel 4 beschreibt die Konzeption des Systems, leitet die Bewertungskriterien und ihre Schwellenwerte her und stellt anschließend die technische Umsetzung dar. Kapitel 5 widmet sich der Evaluation und Bewertung des Systems. Kapitel 6 diskutiert die Ergebnisse, benennt die Grenzen der Arbeit und gibt einen Ausblick.
+
+\section{Grundlagen}
+\subsection{Taekwondo}
+Taekwondo ist eine koreanische Kampfsportart, die sich seit der zweiten Hälfte des 20. Jahrhunderts zu einer international verbreiteten Sportart entwickelte \cite{Fong2011}. Seit den Olympischen Sommerspielen 2000 in Sydney, ist Taekwondo Bestandteil des olympischen Wettkampfprogramms. Abbildung \ref{fig:taekwondo} zeigt eine Wettkampfsituation bei den Olympischen Spielen. Im internationalen Wettkampfsport werden insbesondere die Disziplinen Kyorugi und Poomsae unterschieden. Im Vollkontaktwettkampf (Kyorugi) treten zwei Athletinnen oder Athleten gegeneinander an, wobei Punkte durch Fuß- und Fausttechniken auf definierte Trefferflächen erzielt werden \cite{WTKyorugi2026}. Im Formenlauf (Poomsae) wird dagegen eine festgelegte Abfolge von Techniken ohne direkten Gegner ausgeführt und von Kampfrichtern bewertet \cite{WTPoomsae2024}.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.8\textwidth]{Images/taekwondoolympics.jpg}
+    \caption{Taekwondo-Wettkampf Olympische Sommerspiele 2016 \cite{WikiBild2026}}
+    \label{fig:taekwondo}
+\end{figure}
+
+Neben dem Wettkampfsport spielt die technische Ausführung auch im regulären Training und bei Gürtelprüfungen eine zentrale Rolle. Im Training werden Grundtechniken wiederholt und sowohl ohne Ziel als auch gegen Trainingsgeräte wie Pratzen ausgeführt. Die Korrektur erfolgt dabei in der Regel durch die Trainerin oder den Trainer auf Grundlage der beobachteten Bewegungsausführung. Eine quantitative Erfassung der zugrunde liegenden Bewegungsmerkmale findet dabei nicht zwangsläufig statt.
+
+Der Formenlauf ist zudem Bestandteil der Gürtelprüfungen. Neben praktischen Prüfungsinhalten umfasst eine Gürtelprüfung auch einen theoretischen Teil \cite{KukkiwonRules2018}. Dazu gehört unter anderem das Erlernen koreanischer Fachbegriffe für Techniken und Kommandos. Die sportliche Entwicklung ist über ein Gurtsystem strukturiert. Bis zum Schwarzgurt durchlaufen die Trainierenden verschiedene Kup-Grade, auf die die Meistergrade Dan folgen \cite{KukkiwonRules2018}. Der jeweilige Grad wird im Rahmen einer Prüfung erworben, in der sowohl praktische als auch theoretische Kenntnisse überprüft werden.
+
+Die biomechanische Untersuchung von Taekwondo-Techniken ist sowohl für die Optimierung der sportlichen Leistung als auch für die Reduktion des Verletzungsrisikos relevant \cite{YilmazAtes2025}. Die vorhandene Forschung verteilt sich jedoch nicht gleichmäßig auf die verschiedenen Kicktechniken. Von den 86 Studien, die in einem systematischen Review zur Biomechanik von Taekwondo-Kicks berücksichtigt wurden, untersuchten 49 den Roundhouse Kick, der in dem Review als \textit{Dollyo Chagi} bezeichnet wird, während der Front Kick, dort als \textit{Ap Chagi} bezeichnet, in neun Studien betrachtet wurde. Der Spinning Back Kick, im Review als \textit{Dwit Chagi} bezeichnet, wird nicht als eigenständige Technik ausgewiesen, sondern der Kategorie der übrigen Kicktechniken zugeordnet, auf die zwölf Studien entfielen \cite{YilmazAtes2025}.
+
+Für die vorliegende Arbeit sind sowohl Kyorugi als auch Poomsae relevant, jedoch aus unterschiedlichen Gründen. Im Kyorugi besitzen Fußtechniken eine besondere Bedeutung für die Punktevergabe. So sind Kopftreffer ausschließlich mit Fußtechniken zulässig und Kicks werden höher bewertet als Fausttechniken \cite{WTKyorugi2026}. Im Poomsae steht hingegen die Ausführung der Techniken selbst im Mittelpunkt, da keine Treffer gegen einen Gegner erzielt werden \cite{WTPoomsae2024}. Beide Disziplinen verdeutlichen damit die Bedeutung der technischen Ausführung von Kicks im Taekwondo.
+
+Für die vorliegende Arbeit werden drei Techniken betrachtet, die sich insbesondere hinsichtlich ihrer Bewegungsstruktur und des Ausmaßes der Körperrotation unterscheiden: der Front Kick, der Roundhouse Kick und der Spinning Back Kick. Die folgenden Abschnitte beschreiben deren technische und biomechanische Merkmale, die anschließend als Grundlage für die automatisierte Bewertung dienen.
+
+\subsection{Die untersuchten Techniken}
+Die drei untersuchten Techniken weisen trotz ihrer unterschiedlichen Bewegungscharakteristik eine gemeinsame Grobstruktur auf. Gavagan und Sayers \cite{Gavagan2017} gliedern den \textit{Roundhouse Kick} in vier Phasen: der Anfang bevor das Bein angehoben wird (\textit{Preparation Phase}), das Anheben des Kickbeins (\textit{Chamber}), die Beinstreckung zum Ziel (\textit{Extension}), den Rückzug in die angehobene Position (\textit{Recoil}) und das Absetzen \cite{Gavagan2017}. Dieses Phasenschema wird im Folgenden als gemeinsame Grundlage für die Beschreibung und spätere Phasenerkennung der drei Techniken verwendet. Für die Arbeit werden diese Phasen zu \textit{idle}, \textit{chamber}, \textit{kick}, \textit{rechamber} umbenannt.
+
+\subsubsection{Front Kick}
+Der \textit{Front Kick}, im Taekwondo als \textit{Ap Chagi} bezeichnet, ist ein geradlinig nach vorne ausgeführter Fußstoß und zählt zu den grundlegenden Techniken des Taekwondo. Aus der Kampfstellung wird zunächst das Knie des Kickbeins ungefähr auf Hüfthöhe angehoben, während der Unterschenkel angewinkelt bleibt. Aus dieser Position wird der Unterschenkel nach vorne gestreckt. Als Trefferfläche dient dabei der Fußballen. Anschließend wird das Bein wieder angewinkelt und zurückgezogen, bevor es abgesetzt wird \cite{Gulia2022}.
+
+Beim \textit{Front Kick} lassen sich verschiedene Ausführungsvarianten unterscheiden, die sich vor allem in der verwendeten Trefferfläche voneinander abgrenzen. Gulia und Shaw beschreiben neben dem \textit{Front Kick} den \textit{Front Toe Kick}, bei dem die Zehen als Trefferfläche dienen und der insbesondere auf empfindliche Körperregionen zielt \cite{Gulia2022}. Im Folgenden wird die Ausführung mit dem Fußballen beschrieben. Gemessen wird die Trefferfläche allerdings nicht, da die Landmarken an Ferse und Zehen in der Umsetzung nicht ausgewertet werden (Abschnitt~4.2.2). Beide Varianten unterscheiden sich allein in der Stellung des Fußes, während Kniewinkel, Kniehöhe und Rückführung gleich bleiben. Die Kriterien aus Kapitel~4 gelten daher für beide Varianten gleichermaßen.
+
+Für die technische Ausführung sind insbesondere die Höhe des angehobenen Knies, die Beugung des Beins während der Chamber-Phase sowie die anschließende Streckung und Rückführung des Kickbeins relevant. Das angehobene Knie bestimmt dabei maßgeblich die Höhe, auf der der Kick ausgeführt wird. Der angewinkelte Unterschenkel wird anschließend in Richtung des Ziels gestreckt und nach der Streckung wieder zurückgeführt. Die Abbildung \ref{fig:ap_chagi} zeigt die Abfolge der Phasen des Front Kicks.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{Images/ap_chagi.jpg}
+    \caption{Phasen des \textit{Front Kicks} \cite{Gulia2022}}
+    \label{fig:ap_chagi}
+\end{figure}
+
+\subsubsection{Roundhouse Kick}
+Für die in dieser Arbeit betrachtete Technik wird durchgängig die englische Bezeichnung \textit{Roundhouse Kick} verwendet. In der koreanischen Taekwondo-Terminologie wird diese Technik als \textit{Dollyo Chagi} bezeichnet. In der Literatur finden sich jedoch auch abweichende Bezeichnungen. So wird der \textit{Roundhouse Kick} in Teilen der biomechanischen Forschung als \textit{Bandal Chagi} bezeichnet \cite{Falco2009}. Um eine einheitliche Terminologie zu gewährleisten und mögliche Mehrdeutigkeiten zwischen unterschiedlichen Quellen zu vermeiden, wird im Folgenden ausschließlich die Bezeichnung \textit{Roundhouse Kick} verwendet.
+
+Der \textit{Roundhouse Kick} ist eine seitlich beziehungsweise bogenförmig ausgeführte Fußtechnik. Aus der Ausgangsstellung wird das Kickbein zunächst angehoben und das Knie angewinkelt. Anschließend wird das Knie des Kickbeins gestreckt und der Fuß in Richtung des Ziels geführt. Gavagan und Sayers \cite{Gavagan2017} unterteilen den Bewegungsablauf in eine \textit{idle-}, \textit{chamber-}, \textit{kick-} und \textit{rechamber}-Phase. Die \textit{Chamber}-Phase endet mit Beginn der Kniestreckung und geht in die \textit{Kick}-Phase über, die mit dem Kontakt zum Ziel endet. Unmittelbar nach dem Ende des Zielkontakts beginnt die \textit{Rechamber}-Phase, in der das Kickbein zurückgeführt wird und die mit dem Aufsetzen der Ferse endet \cite{Gavagan2017}.
+
+Ein wesentliches Merkmal des \textit{Roundhouse Kicks} ist die Rotation des Beckens um die Körperlängsachse. Gavagan und Sayers beschreiben die schnelle Rotation des Beckens als einen wichtigen Bestandteil der Technik \cite{Gavagan2017}. Die Rotation unterstützt die bogenförmige Bewegungsbahn des Kickbeins und verändert gleichzeitig die Ausrichtung des Körpers gegenüber dem Ziel. Die Ausführung des \textit{Roundhouse Kicks} setzt sich somit aus der Anhebung und Beugung des Kickbeins, der Beckenrotation und der anschließenden Streckung des Beins zusammen.
+
+Für die technische Beurteilung sind insbesondere die Position des Knies während der \textit{Chamber}-Phase, die Beugung und anschließende Streckung des Kickbeins sowie die Beckenrotation relevant. Während die Position und Beugung des Knies sowie die Streckung des Kickbeins anhand der erkannten Körperlandmarken bestimmt werden können, lässt sich die Beckenrotation über die relative Ausrichtung der Körpersegmente erfassen. Die Trefferfläche des Fußes wird in der vorliegenden Arbeit nicht als Bewertungskriterium berücksichtigt, da die Fußlandmarken nicht ausgewertet werden.
+
+Die Abbildung \ref{fig:bandal_chagi} zeigt die Abfolge der Bewegungsphasen des Roundhouse Kicks.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{Images/bandal_chagi.jpg}
+    \caption{Phasen des Roundhouse Kicks \cite{TaekwonWikiaDol}}
+    \label{fig:bandal_chagi}
+\end{figure}
+
+\subsubsection{Spinning Back Kick}
+Der \textit{Spinning Back Kick}, im Taekwondo als \textit{Dwit Chagi} bezeichnet, ist eine Rückwärtstritttechnik, die durch eine ausgeprägte Rotation des Körpers gekennzeichnet ist. Aus der Ausgangsstellung wird der Körper zunächst um die Längsachse gedreht. Dabei wird das hintere Bein vom Boden gelöst und das Körpergewicht vollständig auf das vordere Standbein verlagert. Anschließend wird das Kickbein angehoben. Pedzich et al. beschreiben für die Ausführung des Dwit Chagi eine Drehung um etwa 180° auf dem Fußballen des vorderen Standbeins. Nach der Drehung wird der Körper leicht in Richtung des Ziels ausgerichtet und das Kickbein zum Ziel gestreckt. Als Trefferflächen werden die Ferse und die Fußsohle angegeben \cite{pedzich2006}.
+
+Wasik und Gora beschreiben den Bewegungsablauf als Rotation um etwa 180° mit anschließender Anhebung und Streckung des Kickbeins. Nach dem Treffer wird das Bein zurückgeführt und die Endposition eingenommen \cite{wasik2016}.
+
+Für die technische Beurteilung sind daher insbesondere die Körperrotation, die Position des Knies während der Chamber-Phase sowie die anschließende Streckung und Rückführung des Kickbeins relevant. Die Körperrotation kann anhand der relativen Ausrichtung der Körperlandmarken erfasst werden. Die Position und Beugung des Knies sowie die Streckung des Kickbeins lassen sich ebenfalls aus den erkannten Landmarken ableiten. Die Trefferfläche des Fußes wird in der vorliegenden Arbeit nicht als Bewertungskriterium berücksichtigt, da die Fußlandmarken nicht ausgewertet werden.
+
+Aus Sicht der videobasierten Analyse stellt der Spinning Back Kick eine besondere Herausforderung dar. Durch die starke Rotation können einzelne Körperbereiche zeitweise von anderen Körperteilen verdeckt werden. Dies kann die Erkennung einzelner Körperlandmarken durch die Pose Estimation beeinträchtigen. Eine vergleichbare Problematik wurde bereits bei der automatisierten Analyse von Taekwondo-Kicks beobachtet. Wang et al. führen bei einem Kick mit ausgeprägter Hüftrotation unter anderem die mögliche Selbstverdeckung von Hüfte, Knie und Sprunggelenk als Ursache für eine geringere Erkennungsleistung an \cite{Wang2026}. Aufgrund der stärkeren Körperrotation ist beim Spinning Back Kick daher eine erhöhte Anfälligkeit für solche Erkennungsprobleme zu erwarten.
+
+Die Abbildung \ref{fig:dwit_chagi} zeigt die Abfolge der Bewegungsphasen des Spinning Back Kicks.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{Images/dwit_chagi.jpg}
+    \caption{Dwit Chagi Phasen \cite{TaekwonWikiaDwi}}
+    \label{fig:dwit_chagi}
+\end{figure}
+
+
+\subsection{Markerlose Bewegungsanalyse}
+\subsubsection{Videobasierte Verfahren}
+Markerbasierte optoelektronische Systeme bestimmen die Position der Körperpunkte über am Körper angebrachte Marker und erreichen dabei eine hohe Messgenauigkeit. Die damit verbundenen Anforderungen an Ausstattung, Aufnahmebedingungen und Nachbearbeitung wurden bereits in Abschnitt~1.1 beschrieben \cite{Colyer2018}.
+
+Markerlose Verfahren bestimmen die Position der Körperpunkte stattdessen unmittelbar aus dem Kamerabild. Damit entfällt nicht nur das Anbringen der Marker, sondern auch die Bindung an eine Laborumgebung. Die Aufnahme kann dadurch auch außerhalb kontrollierter Laborbedingungen erfolgen. Allerdings hängt die Qualität der erfassten Bewegungsdaten von den Aufnahmebedingungen ab. Insbesondere Beleuchtung und Kameraposition können die Genauigkeit der Bewegungserfassung beeinflussen \cite{Thomas2026}.
+
+Für die vorliegende Arbeit ist dieser Zusammenhang relevant, da die Aufnahmen nicht unter Laborbedingungen, sondern mit einem Smartphone im Trainingsumfeld entstehen. Die daraus abgeleiteten Anforderungen an die Aufnahme werden in Abschnitt~4.14 beschrieben.
+
+\subsubsection{Pose Estimation}
+Unter \textit{Pose Estimation} wird die automatische Bestimmung der Position definierter Körperpunkte in einem Bild verstanden. Diese Körperpunkte werden als \textit{Keypoints} oder \textit{Landmarks} bezeichnet. Erfasst werden vor allem Gelenke wie Schulter, Hüfte, Knie und Sprunggelenk, daneben aber auch Punkte an Gesicht und Händen \cite{Edriss2025}. Im weiteren Verlauf der Arbeit wird durchgängig die Bezeichnung \textit{Landmark} verwendet. Aus den so gewonnenen Punkten lässt sich ein Skelettmodell zusammensetzen, aus dem sich kinematische Kenngrößen wie Gelenkwinkel ableiten lassen \cite{Edriss2025}.
+
+Die einzelnen Verfahren unterscheiden sich unter anderem in der Anzahl der \textit{Landmarks} und in der Form der Ausgabe. OpenPose erfasst 25 Punkte, das in MediaPipe enthaltene BlazePose 33 \cite{Edriss2025}. Werden die \textit{Landmarks} ausschließlich in Bildkoordinaten geliefert, handelt es sich um eine zweidimensionale \textit{Pose Estimation}. Verfahren, die zusätzlich eine Tiefeninformation schätzen, geben die Punkte als dreidimensionale Koordinaten aus \cite{Edriss2025}. Zweidimensionale Verfahren sind günstiger und einfacher einzurichten. Da ihnen die Tiefeninformation fehlt, erfassen sie Bewegungen, die aus der Aufnahmeebene herauslaufen, jedoch nur eingeschränkt und hängen stärker von der gewählten Perspektive ab. Als Beispiele nennen Edriss et al. \cite{Edriss2025} die Beugung und die Rotation eines Gelenks \cite{Edriss2025}. Für die vorliegende Arbeit ist diese Unterscheidung von Bedeutung, weil sämtliche Gelenkwinkel aus den dreidimensionalen Weltkoordinaten berechnet werden (Abschnitt~4.7).
+
+\subsubsection{Mediapipe Pose Landmarker}
+MediaPipe ist ein von Google entwickeltes \textit{Open-Source-Framework}, das eine Sammlung modularer Lösungen für Anwendungen des maschinellen Lernens bereitstellt \cite{MediaPipeTasks}. Erstmals vorgestellt wurde MediaPipe von Lugaresi et al. im Jahr 2019 \cite{Lugaresi2019}. Für die vorliegende Arbeit ist innerhalb dieser Sammlung insbesondere der \textit{Pose Landmarker} relevant. 
+
+Der \textit{Pose Landmarker} arbeitet zweistufig. Zunächst detektiert ein Detektor die Anwesenheit einer Person im Bild und legt eine \textit{Region of Interest} (ROI) fest. Anschließend lokalisiert ein \textit{
+Tracker} die \textit{Landmarks} innerhalb dieses Bildausschnitts und aktualisiert sie von Bild zu Bild. Dieses Vorgehen wird als Detector-Tracker-Prinzip bezeichnet \cite{Bazarevsky2020}. Der Vorteil liegt in der Rechenzeit, da die Detektion einer Person im Vollbild deutlich aufwendiger ist als das Tracking in einem zugeschnittenen Bildausschnitt. Der Detektor wird daher nur erneut ausgeführt, wenn die Person den Bildbereich verlässt oder die Verfolgung verloren geht \cite{Bazarevsky2020}.
+
+Die Schnittstelle bildet diese Unterscheidung in drei Laufmodi ab. Der Modus \texttt{IMAGE} verarbeitet jedes Bild unabhängig, während \texttt{VIDEO} und \texttt{LIVE\_STREAM} die beschriebene Verfolgung nutzen und deshalb für jedes Bild einen Zeitstempel erwarten \cite{mediapipepose}.
+
+Das Modell liefert 33 \textit{Landmarks}, die in Abbildung \ref{fig:pose_landmarks} und Tabelle \ref{tab:pose_landmarks} aufgeführt sind. Für jede \textit{Landmark} werden sowohl Bildkoordinaten als auch dreidimensionale Weltkoordinaten in Metern bereitgestellt. Zusätzlich gibt das Modell für jede \textit{Landmark} einen Sichtbarkeitswert aus, der angibt, wie wahrscheinlich der Punkt im Bild sichtbar ist \cite{mediapipepose}. Zugrunde liegt ein \textit{Convolutional Neural Network}, dessen Aufbau sich am Architekturprinzip von MobileNetV2 orientiert \cite{mobilenetv2, mediapipepose}.
+
+Google bietet den \textit{Pose Landmarker} in den drei Varianten \textit{Lite, Full und Heavy} an, die sich in der Größe des verwendeten Modells und damit im Verhältnis von Genauigkeit und Laufzeit unterscheiden \cite{mediapipepose}. Welche Variante in der vorliegenden Arbeit eingesetzt wird, beschreibt Abschnitt~4.2.1.
+
+Die Weltkoordinaten beziehen sich nicht auf den Bildursprung, sondern auf den Mittelpunkt zwischen beiden Hüften, und werden in Metern angegeben \cite{mediapipepose}. Sie sind damit hinsichtlich der Translation bereits normiert, sodass eine Verlagerung der Person im Raum die Koordinaten nicht verändert. Umgekehrt folgt daraus, dass die Weltkoordinaten die Bewegung ausschließlich relativ zum Körper beschreiben. Diese Eigenschaft wird in Abschnitt~4.3.3 bei der Normierung genutzt und wirkt sich zugleich auf die Geschwindigkeitsmessung aus (Abschnitt~4.11).
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{Images/pose_landmarks_index.png}
+    \caption{Modell für Landmarken für Posen mit 33 Körpermarkierungen}
+    \label{fig:pose_landmarks}
+\end{figure}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{ccc}
+\hline
+\textbf{ID} & \textbf{Landmark} & \textbf{ID} \\ \hline
+0  & Nose                 & 17 – Left pinky \\
+1  & Left eye (inner)     & 18 – Right pinky \\
+2  & Left eye             & 19 – Left index \\
+3  & Left eye (outer)     & 20 – Right index \\
+4  & Right eye (inner)    & 21 – Left thumb \\
+5  & Right eye            & 22 – Right thumb \\
+6  & Right eye (outer)    & 23 – Left hip \\
+7  & Left ear             & 24 – Right hip \\
+8  & Right ear            & 25 – Left knee \\
+9  & Mouth (left)         & 26 – Right knee \\
+10 & Mouth (right)        & 27 – Left ankle \\
+11 & Left shoulder        & 28 – Right ankle \\
+12 & Right shoulder       & 29 – Left heel \\
+13 & Left elbow           & 30 – Right heel \\
+14 & Right elbow          & 31 – Left foot index \\
+15 & Left wrist           & 32 – Right foot index \\
+16 & Right wrist          &  \\ \hline
+\end{tabular}
+\caption{MediaPipe Pose Landmarks (33 Punkte) Definition}
+\label{tab:pose_landmarks}
+\end{table}
+
+\subsubsection{Automatisierte Bewegungsbewertung}
+Ein Verfahren zur \textit{Pose Estimation} liefert ausschließlich Positionen. Ob eine Ausführung technisch korrekt war, ergibt sich daraus nicht von selbst. Zwischen den erfassten \textit{Landmarks} im Bild und einer Aussage über die Qualität der Ausführung liegt ein eigener Verarbeitungsschritt, in dem festgelegt wird, welche Größen aus den Positionen berechnet werden, welche Werte als korrekt gelten und in welcher Form das Ergebnis zurückgemeldet wird.
+
+Ein Review von Tharatipyakul et al. \cite{Tharatipyakul2024} zu videobasiertem Bewegungsfeedback unterscheidet drei Wege, eine Bewegung zu bewerten \cite{Tharatipyakul2024}. Der erste rechnet die Bewertung über eine mathematische Formel aus den Messwerten aus. Der zweite ist regelbasiert und prüft die Ausführung gegen festgelegte Bedingungen und Schwellenwerte. Der dritte überlässt die Bewertung einem trainierten Modell. Der eigentlichen Bewertung ist in einigen Arbeiten ein Vorverarbeitungsschritt vorgelagert, der die Aufnahme zeitlich auf eine Referenzbewegung ausrichtet. In sämtlichen Arbeiten, die eine solche Ausrichtung vornehmen, kommt dafür \textit{Dynamic Time Warping} zum Einsatz \cite{Tharatipyakul2024}.
+
+Die vorliegende Arbeit folgt dem regelbasierten Ansatz. Ausschlaggebend sind zwei Gründe. Erstens ist die Nachvollziehbarkeit der Rückmeldung das zentrale Ziel der Anwendung, da eine Bewertung ohne erkennbare Begründung im Trainingskontext wenig Nutzen bringt. Zweitens stand kein annotierter Datensatz zur Verfügung, der die erforderlichen Angaben zur Ausführung und Qualität der betrachteten Taekwondo-Techniken in geeigneter Form bereitstellt. Die daraus abgeleiteten Kriterien und Schwellenwerte werden in Kapitel~4 hergeleitet.
+
+\section{Verwandte Arbeiten}
+Systeme zur automatisierten Bewertung von Bewegungsausführungen sind für verschiedene Anwendungsfelder entwickelt worden. Sie unterscheiden sich darin, welche Sensorik sie voraussetzen, ob sie die ausgeführte Bewegung selbst erkennen müssen und woher der Maßstab stammt, an dem sie die Ausführung messen.
+
+Pham et al. \cite{Pham2022} stellten eine Anwendung vor, die körperliche Übungen aus RGB-Bildern erkennt und bewertet. Das System gewinnt die \textit{Landmarks} mit MediaPipe, ordnet die Sequenz über ein neuronales Netz einer von drei Übungen zu und bewertet sie anschließend. Die Arbeit zeigt, dass \textit{Pose Estimation}, Erkennung der Übung und die Bewertung ohne spezielle Hardware auskommen und damit auf Geräte wie die Kinect verzichten können, die vergleichbare Systeme zuvor voraussetzten \cite{Pham2022}.
+
+Wie belastbar die dabei erzeugten Bewertungen sind, ist dagegen wenig untersucht. Ein systematisches Review kamerabasierter mobiler Anwendungen für das Bewegungsscreening bei gesunden Erwachsenen weist darauf hin, dass zur Bewertung der Bewegungsqualität und zu Rückmeldungen in Echtzeit bislang wenig Evidenz vorliegt \cite{ElRajab2025}. Die technische Machbarkeit ist damit vielfach gezeigt, die Frage nach der Aussagekraft der Ergebnisse bleibt weitgehend offen.
+
+Wie in Abschnitt~2.1 dargestellt, verteilt sich die biomechanische Forschung zu Taekwondo-Kicks ungleichmäßig über die Techniken. Gerade die Technik mit der stärksten Körperdrehung ist dabei am schlechtesten untersucht. Kim et al. \cite{Kim2011} untersuchten die Gelenkkinematik des Kickbeins für vier Taekwondo-Techniken und beschreiben den \textit{Spinning Back Kick} als \textit{push-like movement}, das seine Geschwindigkeit aus einer Kombination von Hüft- und Kniestreckung gewinnt \cite{Kim2011}. Auf diesen Befund stützt sich die Herleitung der Bewertungskriterien für den \textit{Spinning Back Kick} in Abschnitt~4.4.4.
+
+\subsection{Wang et al. (2026)}
+Für Taekwondo liegt seit Kurzem eine Arbeit vor, die dem hier verfolgten Ansatz nahekommt. Wang et al. \cite{Wang2026} entwickelten einen Desktop-Prototyp, der mit dem Smartphone aufgenommene Videos auswertet und drei Grundtechniken erkennt und bewertet, nämlich \textit{Front Kick}, \textit{Roundhouse Kick} und \textit{Axe Kick}. Grundlage ist ein eigens erhobener Datensatz mit 765 verwertbaren Aufnahmen von 150 Studierenden \cite{Wang2026}. Die Verarbeitungskette ist in Abbildung \ref{fig:wang_pipeline} dargestellt.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{Images/wang_pipeline.png}
+    \caption[Verarbeitungskette bei Wang et al.]{%
+    Verarbeitungskette des Prototyps von Wang et al.: Merkmalsgewinnung,
+    Technikerkennung, regelbasierte Bewertung und Rückmeldung. Abbildung
+    entnommen aus \cite{Wang2026}}
+    \label{fig:wang_pipeline}
+\end{figure}
+
+Das System verwendet MediaPipe Pose zur Extraktion von 13 Landmarken, aus denen je Bild ein 52-dimensionaler Merkmalsvektor aus normierten zweidimensionalen Positionen und deren erster Ableitung gebildet wird. Die Erkennung der Technik übernimmt ein bidirektionales LSTM, das unter dem verwendeten Validierungsverfahren eine Genauigkeit von 75,3 $\pm$ 2,3 Prozent erreicht. Die Autoren ordnen diesen Wert selbst vorsichtig ein, da in den Daten keine Teilnehmerkennungen vorlagen und sich deshalb keine personenunabhängige Trennung von Trainings- und Validierungsdaten herstellen ließ. Aufnahmen derselben Person können daher in beiden Teilmengen vorkommen, was die Genauigkeit überhöht haben kann. Transformer- und GCN-Architekturen wurden zum Vergleich untersucht und schnitten mit 67,3 beziehungsweise 51,0 Prozent schlechter ab \cite{Wang2026}.
+
+Aufschlussreich für die vorliegende Arbeit ist die Aufteilung über die drei Techniken. Der \textit{Roundhouse Kick} wird mit einem F1-Wert von 67,9 Prozent deutlich schlechter erkannt als der \textit{Front Kick} mit 73,9 und der \textit{Axe Kick} mit 81,0 Prozent. Als Ursache nennen die Autoren die stärkere Rotation bei dieser Technik, die die Abhängigkeit vom Blickwinkel erhöht und zur Selbstverdeckung von Hüfte, Knie und Sprunggelenk führt \cite{Wang2026}. Einschränkend kommt hinzu, dass der \textit{Roundhouse Kick} zugleich die kleinste Klasse bildet und ausschließlich von Studierenden des zweiten Jahrgangs stammt, da die Technik im ersten Jahrgang noch nicht im Unterricht behandelt worden war \cite{Wang2026}. 
+
+Die Bewertung selbst erfolgt regelbasiert nach einem 10-Punkte-Schema, das an die Bewertungsmaßstäbe des Poomsae-Wettkampfs angelehnt ist und sich in vier Punkte für technische Korrektheit sowie sechs Punkte für Ausdruck aufteilt \cite{Wang2026}. Die Ausdruckskomponente stützt sich auf abgeleitete Größen wie Geschwindigkeit und Gleichmäßigkeit der Kicks und bleibt hier außer Betracht, da die vorliegende Arbeit auf eine solche Komponente verzichtet. 
+
+Die Genauigkeitskomponente umfasst sechs Positionen: Streckung des Standbeins, Kicktechnik aus erreichter Höhe und Kniestreckung, Chamber, Rückzug, Landeposition und Stabilität der Hände \cite{Wang2026}. Vier davon finden sich auch in der vorliegenden Arbeit wieder. Landeposition und Handhaltung fehlen, da weder die \textit{Landmarks} am Fuß noch am Handgelenk ausgewertet werden. Beide werden in Kapitel~6 als mögliche Erweiterung aufgegriffen.
+ 
+
+\subsection{Abgrenzung der vorliegenden Arbeit}
+Aus den vorgestellten Arbeiten lässt sich die Position der vorliegenden Arbeit ableiten. Pham et al. \cite{Pham2022} zeigen, dass eine markerlose, MediaPipe-gestützte Bewertung ohne Spezialhardware grundsätzlich funktioniert. Ihr System zielt allerdings auf zyklische Fitnessübungen und nicht auf schnelle, rotationsbehaftete Kampfsporttechniken. El-Rajab et al. \cite{ElRajab2025} machen deutlich, dass die Aussagekraft solcher Bewertungen selten eigenständig untersucht wird. Dieser Punkt gilt auch für die vorliegende Arbeit als Grenze, denn eine empirische Kalibrierung an Trainerurteilen wäre dafür erforderlich und konnte hier nicht geleistet werden. Kapitel~6 greift ihn wieder auf.
+
+Am nächsten steht der vorliegenden Arbeit der Ansatz von Wang et al. \cite{Wang2026}. Zwei Unterschiede sind für die Zielsetzung dieser Arbeit zentral.
+
+Erstens verzichtet die vorliegende Arbeit auf die automatische Technikerkennung und lässt die Technik stattdessen vom Nutzer wählen. Damit entfällt die Fehlerquelle einer LSTM-basierten Klassifikation, die bei Wang et al. gerade für die am stärksten rotierende Technik am unzuverlässigsten arbeitet. 
+
+Zweitens wird mit dem \textit{Spinning Back Kick} eine Technik bewertet, deren Rotation deutlich stärker ausfällt als bei den drei von Wang et al. untersuchten Techniken. Weder der \textit{Front Kick} noch der \textit{Axe Kick} besitzen eine vergleichbare Drehung um die Körperlängsachse, und selbst der dort am schlechtesten erkannte \textit{Roundhouse Kick} bleibt eine reine Beckenrotation ohne vollständige Wendung. Die von Wang et al. berichtete Verdeckungsproblematik lässt sich damit an einer noch ausgeprägteren Technik prüfen, statt sie nur aus der Literatur zu übernehmen.
+ 
+Daraus ergibt sich die Forschungslücke, an der die vorliegende Arbeit ansetzt. Sie betrifft zum einen die Frage, ob sich die Merkmale einer korrekten Kickausführung mit regelbasierten Kriterien aus acht \textit{Landmarks} erfassen lassen, und zum anderen, wo dieser Ansatz an Grenzen stößt, wenn sich der Körper vollständig um die eigene Achse dreht.
+
+\section{Konzept \& Implementierung}
+\subsection{Überblick über das System}
+Die entwickelte Anwendung nimmt ein Video einer einzelnen Kickausführung entgegen und gibt eine nach Kriterien aufgeschlüsselte Bewertung zurück. Der Ablauf gliedert sich in vier Schritte.
+
+Im ersten Schritt wird die Aufnahme Bild für Bild durchlaufen und für jedes Einzelbild die Position der ausgewerteten \textit{Landmarks} bestimmt. MediaPipe arbeitet dabei intern in zwei Stufen, indem zunächst ein Detektor die Person im Bild findet und anschließend ein Tracker die \textit{Landmarks} innerhalb dieses Bildausschnitts lokalisiert (Abschnitt~2.3.3).
+Im zweiten Schritt werden daraus kinematische Größen berechnet, insbesondere Gelenkwinkel und Positionen einzelner Körperpunkte. Der dritte Schritt teilt die Aufnahme in die Phasen des jeweiligen Bewegungsablaufs, sodass jede Messgröße dem Abschnitt zugeordnet werden kann, in dem sie aussagekräftig ist. Im vierten Schritt werden die gewonnenen Werte mit festgelegten Schwellen verglichen und in eine Bewertung überführt.
+
+Umgesetzt ist das System als Webanwendung mit getrenntem Frontend und Backend. Das Frontend übernimmt die Auswahl von Technik und Videodatei, die Anzeige des Verarbeitungsfortschritts sowie die Darstellung der Ergebnisse. Die Analyse erfolgt serverseitig in Python. Im Betrieb wird das Frontend vom Backend statisch mit ausgeliefert, sodass Anwendung und Schnittstelle unter derselben Adresse erreichbar sind.
+
+Diese Aufteilung wurde bewusst gewählt. Eine Auswertung im Browser oder über eine App auf dem Smartphone wäre technisch möglich gewesen, hätte die verfügbare Rechenleistung jedoch an das jeweilige Endgerät gebunden und den Einsatz der größten Modellvariante von MediaPipe praktisch ausgeschlossen. Die serverseitige Verarbeitung stellt zudem sicher, dass identische Aufnahmen unabhängig vom verwendeten Gerät gleich ausgewertet werden.
+
+Abbildung \ref{fig:architecure_diagram} zeigt die Architektur des Systems. Sie besteht aus drei Teilen, dem React-basierten Frontend, der FastAPI-Web-API und der serverseitigen Python-Analysepipeline. Das Frontend übermittelt die ausgewählte Videodatei und die gewählte Kicktechnik an das Backend. Dieses startet die Analyse und übergibt das Video an die Analysepipeline, in der \textit{Pose Estimation}, Phasenerkennung und Bewertung ablaufen. Anschließend werden die Ergebnisse und das annotierte Video über das Backend an das Frontend zurückgegeben und dort angezeigt.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=1\textwidth]{Images/diagramm.png}
+    \caption{Vereinfachte Architektur der entwickelten Anwendung.}
+    \label{fig:architecure_diagram}
+\end{figure}
+
+\subsubsection{Technologische Grundlage}
+Das Backend ist in Python umgesetzt und verwendet FastAPI als Webframework sowie Uvicorn als Server. Die Bildverarbeitung erfolgt über OpenCV, während numerische Berechnungen über NumPy durchgeführt werden. Für die \textit{Pose Estimation} kommt MediaPipe zum Einsatz und für die abschließende Nachkodierung des Ausgabevideos \texttt{imageio-ffmpeg}. Das Frontend ist mit React und Typescript umgesetzt und als Buildwerkzeug dient Vite. Die Anwendung ist als Progressive Web App (PWA) ausgelegt und lässt sich dadurch auf mobilen Endgeräten wie eine installierte Anwendung nutzen, während sie auf dem Computer wie eine gewöhnliche Webseite bedient wird.
+
+Zum Zeitpunkt der Umsetzung wurde Python 3.14 verwendet, während MediaPipe offiziell nur bis Python 3.12 unterstützt wird. Der Betrieb unter 3.14 funktioniert in der vorliegenden Umsetzung, ist von den Herstellern jedoch nicht abgesichert. Dieser Punkt wird in Kapitel~6 als Limitation wieder aufgegriffen.
+
+\subsection{Erfassung der Körperhaltung}
+\subsubsection{Wahl des Frameworks}
+Für die Erfassung der Körperhaltung wird MediaPipe eingesetzt. Ausschlaggebend waren drei Eigenschaften. Das Verfahren läuft auf handelsüblicher Hardware ohne Grafikbeschleunigung in vertretbarer Zeit. Es liefert neben den Bildkoordinaten dreidimensionale Weltkoordinaten, aus denen sich Gelenkwinkel berechnen lassen. Schließlich steht MediaPipe unter der Apache License 2.0 und erlaubt den Einsatz damit ohne Einschränkungen \cite{MediaPipeLicense}. OpenPose wird dagegen unter einer Lizenz der Carnegie Mellon University veröffentlicht, die die Nutzung auf nichtkommerzielle Forschung an akademischen oder gemeinnützigen Einrichtungen begrenzt \cite{OpenPoseLicense}.
+
+Eingesetzt wird der \textit{Pose Landmarker} im Laufmodus \texttt{VIDEO}, der die in Abschnitt~2.3.3 beschriebene Verfolgung über die Bildfolge hinweg nutzt. Die drei Konfidenzschwellen für Detektion, Präsenz und Tracking bleiben auf dem voreingestellten Wert von 0,5.
+
+Alle drei Modellvarianten sind in der Anwendung auswählbar. Voreingestellt ist \emph{heavy}, da diese Variante in Vorversuchen die stabilsten \textit{Landmarks} lieferte. Die höhere Rechenzeit fällt dabei nicht ins Gewicht, weil die Auswertung serverseitig erfolgt (Abschnitt~4.1). Die Auswahl der Modellvariante durch den Nutzer ist für eine Endanwendung nur als Prototypische Eigenschaft zu verstehen. Sie erlaubt es, den Einfluss der Modellgröße auf die Messwerte im Rahmen der Evaluation systematisch zu untersuchen (Abschnitt~5.9).
+
+\subsubsection{Verwendete Landmarks}
+Von den 33 gelieferten \textit{Landmarks} werden acht ausgewertet, nämlich Schulter, Hüfte, Knie und Sprunggelenke jeweils beider Seiten. Diese acht Punkte genügen, um sämtliche in Abschnitt~2.2 beschriebenen Merkmale zu erfassen. Der Kniewinkel ergibt sich aus Hüfte, Knie und Sprunggelenk, die Hüftbeugung aus Schulter, Hüfte und Knie. Die Ausrichtung des Beckens ergibt sich aus der Verbindungslinie beider Hüften. Ihre Senkrechte gibt in der Draufsicht an, wohin das Becken zeigt (Abschnitt~4.7).
+
+Die \textit{Landmarks} an Ferse und Zehen bleiben unberücksichtigt. Der Verzicht auf diese Punkte hat zur Folge, dass die Ausrichtung des kickenden Fußes oder des Standfußes nicht erfasst werden kann. Welche Bewertungskriterien dadurch entfallen, greift Kapitel~6 auf.
+
+Sämtliche Berechnungen stützen sich auf die metrischen Weltkoordinaten. Die normierten Bildkoordinaten dienen ausschließlich der Darstellung des Skeletts im Ausgabevideo.
+
+\subsection{Vorverarbeitung}
+Zwischen der hochgeladenen Datei und den ausgewerteten Messgrößen liegen mehrere Verarbeitungsschritte, die das Ergebnis beeinflussen.
+
+\subsubsection{Bildrate}
+Das Video wird mit OpenCV geöffnet und die Bildrate aus den Metadaten ausgelesen. Liefert die Datei keine verwertbare Angabe, wird ersatzweise mit 30 Bildern pro Sekunde gerechnet. Die Bildrate geht ausschließlich in die Berechnung der Fußgeschwindigkeit ein (Abschnitt~4.11), während die winkelbasierten Kriterien von ihr unabhängig sind. Ein falscher Ersatzwert verfälscht damit nur die angezeigte Geschwindigkeit, nicht aber die Bewertung. 
+
+\subsubsection{Auswahl der Person}
+Werden mehrere Personen im Bild erkannt, wird stets die erste zurückgegebene Person verwendet. Eine Auswahl durch den Nutzer oder ein Hinweis findet nicht statt. Dass sich nur eine Person im Bild befinden soll, wird ausschließlich als Hinweistext vermittelt und technisch nicht geprüft (Abschnitt~4.13).
+
+Das System prüft nicht, ob über das ganze Video hinweg dieselbe Person ausgewertet wird. Bricht die Verfolgung kurz ab, läuft die Detektion erneut an und kann eine andere Person zurückgeben (Abschnitt~2.3.3). Da immer die erste zurückgegebene Person verwendet wird, kann die Auswertung dadurch mitten in der Aufnahme auf jemand anderen überspringen.
+
+\subsubsection{Normierung}
+Die Weltkoordinaten von MediaPipe sind bereits auf die Hüftmitte bezogen und damit translationsnormiert (Abschnitt~2.3.3). Eine Skalierungsnormierung ist für die Gelenkwinkel nicht erforderlich, da diese skaleninvariant sind. Der Winkel zwischen zwei Segmenten ändert sich nicht, wenn beide Segmente länger werden.
+
+Für längenbasierte Größen gilt das nicht. Die Fußbahn, die beim \textit{Spinning Back Kick} zur Phasenerkennung dient, wird deshalb auf die Beinlänge normiert, die sich als Summe der Abstände Hüfte-Knie und Knie-Knöchel des Standbeins ergibt. 
+\begin{equation}
+\ell_{\text{Bein}} = \lVert \vec{p}_{\text{Hüfte}} - \vec{p}_{\text{Knie}} \rVert + \lVert \vec{p}_{\text{Knie}} - \vec{p}_{\text{Knöchel}} \rVert
+\label{eq:leglength}
+\end{equation}
+
+Dabei beziehen sich die Punkte $\vec{p}_{\text{Hüfte}}$, $\vec{p}_{\text{Knie}}$ und $\vec{p}_{\text{Knöchel}}$ auf das Standbein und gehen als dreidimensionale Weltkoordinaten in Metern ein. Alle Größen der Fußbahn werden anschließend in Vielfachen von $\ell_{\text{Bein}}$ angegeben (Abschnitt~4.4).  Eine Fußhöhe von $0{,}30\,\ell_{\text{Bein}}$ bedeutet damit, dass der Fuß auf 30 Prozent der Beinlänge angehoben ist, unabhängig davon, wie lang das Bein tatsächlich ist. Die Kriterien zur Fußbahn sind dadurch von der Körpergröße unabhängig.
+
+Die Kniehöhe wird dagegen in absoluten Metern ausgewertet. Bewertet wird das Absinken des Knies während der Kickphase, also die Differenz zwischen der höchsten und der niedrigsten erreichten Position. 
+
+\subsubsection{Glättung}
+Nicht alle Messgrößen werden geglättet. Die Fußgeschwindigkeit wird über einen gleitenden Median von drei Bildern geführt, da sie als Differenzgröße besonders rauschempfindlich ist. Die übrigen Winkel gehen ungeglättet in die Messreihe ein. Beim Kniewinkel des Standbeins wird die Streuung erst bei der Bewertung aufgefangen, indem dort der Median über alle Bilder der Kickphase gebildet wird.
+
+Zusätzlich wirken zwei Plausibilitätsfilter. Sie glätten nicht, sondern verwerfen Werte, die keiner echten Bewegung entsprechen können. MediaPipe vertauscht gelegentlich linke und rechte \textit{Landmarks}, wodurch die berechnete Beckenrichtung schlagartig um 180 Grad kippt. 
+
+Der erste Filter betrifft die Hüftausrichtung. Ändert sie sich zwischen zwei aufeinanderfolgenden Bildern um mehr als 60 Grad, wird der neue Wert verworfen und der letzte gültige beibehalten. Bei 30 Bildern pro Sekunde entspricht diese Grenze einer Winkelgeschwindigkeit von 1800 Grad pro Sekunde, die eine echte Beckenbewegung nicht erreicht. Der Filter wirkt bei allen drei Techniken, da alle die Hüftausrichtung im vollen Bereich von 0 bis 180 Grad auswerten (Abschnitt~4.7).
+
+Der zweite Filter betrifft die aufsummierte Beckendrehung und wirkt allein beim \textit{Spinning Back Kick}, da nur dort eine solche Summe gebildet wird. Hier liegt die Grenze enger bei 30 Grad je Bild. Übersteigt ein Schritt diesen Wert, wird er nicht mitgezählt. Weil sich die Einzelschritte aufsummieren, würde ein einzelner fehlerhafter Wert sonst dauerhaft im Ergebnis stehen bleiben.
+
+\subsection{Erkennung der Bewegungsphasen}
+\subsubsection{Warum eine Phaseneinteilung erforderlich ist}
+Ob ein Messwert für eine gute oder eine schlechte Ausführung spricht, hängt davon ab, wann im Bewegungslauf er auftritt. Ein Kniewinkel von etwa 70 Grad ist in der Chamber-Phase erwünscht, denn dort soll das Bein eng angezogen sein. Derselbe Wert während der Streckung würde bedeuten, dass der Kick gar nicht ausgeführt wurde. Umgekehrt ist ein weit gestrecktes Knie in der Kickphase das Ziel und in der Chamber-Phase ein Zeichen dafür, dass nicht angezogen wurde.
+
+Die Messgrößen lassen sich deshalb nur bewerten, wenn bekannt ist, zu welchem Abschnitt der Bewegung sie gehören. Die Phaseneinteilung ist damit die Voraussetzung dafür, dass die Kriterien überhaupt gebildet werden können.
+
+\subsubsection{Umsetzung als Zustandsmaschine}
+Jede Technik ist als eigene Zustandsmaschine umgesetzt. Der Zustand beschreibt die aktuelle Phase, die Übergänge sind über Bedingungen auf den Messgrößen des laufenden Bildes definiert (Abschnitt~4.4.4). Jeder Phasenwechsel wird mit der zugehörigen Bildnummer protokolliert, sodass sich der erkannte Bewegungsablauf im Nachhinein nachvollziehen lässt.
+
+\textit{Front Kick} und \textit{Roundhouse Kick} durchlaufen die Phasenfolge \textit{idle}, \textit{chamber}, \textit{kick}, \textit{rechamber} und zurück nach \textit{idle}. Der \textit{Spinning Back Kick} besitzt mit \textit{rotation} eine zusätzliche Phase, in der die Eindrehung des Körpers stattfindet, bevor das Knie angezogen wird.
+
+\subsubsection{Bestimmung der Kickseite}
+Vor der eigentlichen Phasenerkennung muss festgelegt werden, welches Bein kickt und welches steht. Solange sich das System in der Phase \textit{idle} befindet, vergleicht das System die Höhe beider Knie. Übersteigt sie fünf Zentimeter, gilt das höhere Knie als Kickbein. Diese Zuordnung wird danach nicht mehr zurückgesetzt und bleibt für das gesamte Video bestehen.
+
+Damit lässt sich pro Video nur eine Ausführung auswerten. Die Beschränkung folgt aus der Zielsetzung. Untersucht werden soll, wie zuverlässig sich die Merkmale einer einzelnen Ausführung erfassen lassen. Eine kontrollierte Einzelaufnahme ist dafür die geeignete Grundlage, während mehrere Kicks in einer Aufnahme eine weitere Fehlerquelle einführen würden. 
+
+\subsubsection{Übergangsbedingungen}
+Die Übergänge zwischen den Phasen sind für jede Technik über Bedingungen auf den Messgrößen des laufenden Bildes festgelegt. Die zugehörigen Bewertungskriterien und ihre Schwellenwerte werden in Abschnitt~4.8 hergeleitet.
+ 
+\paragraph{Front Kick.}
+Die Chamber-Phase beginnt, sobald der Kniewinkel unter 100 Grad fällt und der Oberschenkel gleichzeitig um mehr als 45 Grad gegenüber der Senkrechten angehoben ist. Die zweite Bedingung verhindert, dass ein bloßes Beugen des Knies im Stand als Chamber erkannt wird. Der Übergang in die Kickphase erfolgt, wenn der Kniewinkel 131 Grad überschreitet und die Oberschenkelneigung weiterhin über 45 Grad liegt. Der Rückzug gilt als eingeleitet, sobald der Kniewinkel um mindestens 80 Grad unter das erreichte Streckungsmaximum zurückgeht, während die Oberschenkelneigung weiterhin über 45 Grad bleibt. Fällt die Oberschenkelneigung unter 50 Grad, während das Knie über 150 Grad gestreckt ist, wird die Erkennung abgebrochen und in den Ausgangszustand zurückgesetzt. Tabelle~\ref{tab:transitions_front} fasst die Übergänge zusammen.
+ 
+\begin{table}[htbp]
+\centering
+\begin{tabular}{p{0.32\textwidth} p{0.62\textwidth}}
+\hline
+\textbf{Übergang} & \textbf{Bedingung} \\ \hline
+idle $\rightarrow$ chamber & Kniewinkel $<100°$ \textbf{und} Oberschenkelneigung $>45°$ \\
+chamber $\rightarrow$ kick & Kniewinkel $>131°$ \textbf{und} Oberschenkelneigung $>45°$ \\
+kick $\rightarrow$ rechamber & Oberschenkelneigung $>45°$ \textbf{und} (max. Kniewinkel $-$ aktuell) $\geq 80°$ \\
+$\rightarrow$ idle (Abbruch) & Kniewinkel $>150°$ \textbf{und} Oberschenkelneigung $<50°$ \\ \hline
+\end{tabular}
+\caption{Phasenübergänge des \textit{Front Kick}}
+\label{tab:transitions_front}
+\end{table}
+ 
+Die Schwelle von 131 Grad für den Übergang in die Kickphase ist bewusst mit dem \texttt{fail\_at}-Wert des Kriteriums Beinstreckung gleichgesetzt (Abschnitt~4.8). Eine gerade noch erkannte Ausführung beginnt dadurch bei null Prozent und erhält mit zunehmender Streckung mehr Punkte. Abschnitt~4.9 greift diesen Zusammenhang auf.
+ 
+\paragraph{Roundhouse Kick.}
+Der \textit{Roundhouse Kick} folgt derselben Zustandsstruktur wie der \textit{Front Kick} und verwendet für Chamber und Kick dieselben Schwellen, also 100 Grad für den Beginn der Chamber-Phase und 131 Grad für den Übergang in die Kickphase (Tabelle~\ref{tab:transitions_round}).
+ 
+Für die Phasenerkennung zählen dabei nur Kniewinkel und Oberschenkelneigung. Die Hüftrotation, die diese Technik von den beiden anderen unterscheidet, bleibt hier außen vor und fließt erst über die Hüftausrichtung in die Bewertung ein (Abschnitt~4.8).
+ 
+\begin{table}[htbp]
+\centering
+\begin{tabular}{p{0.32\textwidth} p{0.62\textwidth}}
+\hline
+\textbf{Übergang} & \textbf{Bedingung} \\ \hline
+idle $\rightarrow$ chamber & Kniewinkel $<100°$ \textbf{und} Oberschenkelneigung $>45°$ \\
+chamber $\rightarrow$ kick & Kniewinkel $>131°$ \textbf{und} Oberschenkelneigung $>45°$ \\
+kick $\rightarrow$ rechamber & Oberschenkelneigung $>45°$ \textbf{und} (max. Kniewinkel $-$ aktuell) $\geq 80°$ \\
+$\rightarrow$ idle (Abbruch) & Kniewinkel $>150°$ \textbf{und} Oberschenkelneigung $<50°$ \\ \hline
+\end{tabular}
+\caption{Phasenübergänge des \textit{Roundhouse Kick}}
+\label{tab:transitions_round}
+\end{table}
+ 
+\paragraph{Spinning Back Kick.}
+Der \textit{Spinning Back Kick} besitzt als einzige der drei Techniken eine vorgelagerte Rotationsphase. Sie beginnt, sobald die aufsummierte Beckendrehung 45 Grad überschreitet. Bleibt die Eindrehung darunter, wird das Knie aber dennoch angezogen, greift ein Rückfall direkt von \textit{idle} nach \textit{chamber}, sodass auch eine schwach ausgeprägte Eindrehung noch ausgewertet wird, statt die Erkennung ganz abzubrechen (Tabelle~\ref{tab:transitions_dwit}).
+ 
+Anders als bei den beiden übrigen Techniken wird der Übergang in die Kickphase nicht über den Kniewinkel erkannt, sondern über die Fußbahn. Geprüft werden zwei Größen. Der horizontale Abstand der beiden Knöchel muss über $0{,}45\,\ell_{\text{Bein}}$ liegen und die Fußhöhe über $0{,}30\,\ell_{\text{Bein}}$. Der Fuß muss also gleichzeitig weit vom Standbein entfernt und angehoben sein.
+ 
+Der Kniewinkel scheidet für diesen Übergang aus, weil er mehrdeutig ist. Im Treffmoment strecken sich Hüfte und Knie gemeinsam, und dieselbe Stellung nimmt der Körper auch im ruhigen Stand ein. Ein gestrecktes Knie allein unterscheidet den ausgeführten Kick deshalb nicht vom Absetzen des Beins. Die Fußbahn löst das, weil sie eine Position misst und keine Gelenkstellung. Ein abgesetzter Fuß steht am Boden, ein kickender Fuß nicht.
+ 
+\begin{table}[htbp]
+\centering
+\begin{tabular}{p{0.30\textwidth} p{0.58\textwidth}}
+\hline
+\textbf{Übergang} & \textbf{Bedingung} \\ \hline
+idle $\rightarrow$ rotation & aufsummierte Beckendrehung $>45°$ \\
+idle $\rightarrow$ chamber (Rückfall) & Kniewinkel $<100°$ \textbf{und} Hüftbeugung $<150°$ \\
+rotation $\rightarrow$ chamber & Kniewinkel $<100°$ \\
+chamber $\rightarrow$ kick & Knöchelabstand $>0{,}45\,\ell_{\text{Bein}}$ \textbf{und} Fußhöhe $>0{,}30\,\ell_{\text{Bein}}$ \\
+chamber $\rightarrow$ idle (Abbruch) & Fuß war oben ($>0{,}30\,\ell_{\text{Bein}}$), jetzt unten ($<0{,}15\,\ell_{\text{Bein}}$) \\
+kick $\rightarrow$ rechamber & Fußhöhe $>0{,}25\,\ell_{\text{Bein}}$ \textbf{und} (max. Kniewinkel $-$ aktuell) $\geq 35°$ \\
+kick $\rightarrow$ idle & Kniewinkel $>160°$ \textbf{und} Hüftbeugung $>160°$ \\
+rechamber $\rightarrow$ idle & Kniewinkel $>160°$ \\ \hline
+\end{tabular}
+\caption{Phasenübergänge des \textit{Spinning Back Kick}. $\ell_{\text{Bein}}$ bezeichnet die Beinlänge aus Gleichung~\ref{eq:leglength}, der Knöchelabstand wird in der Draufsicht gemessen.}
+\label{tab:transitions_dwit}
+\end{table}
+ 
+Nur der \textit{Spinning Back Kick} führt zudem eine aufsummierte Beckendrehung (\texttt{total\_rotation}) mit, die die in Abschnitt~4.3.4 beschriebenen Plausibilitätsfilter durchläuft.
+
+\subsection{Treffmoment und technikspezifische Sonderregeln}
+Alle drei Techniken bestimmen einen Treffmoment auf dieselbe Weise. Während der Kickphase merkt sich das System den größten bisher gemessenen Kniewinkel. Wird ein neuer Höchstwert erreicht, speichert es zusätzlich die aktuelle Hüftausrichtung. Am Ende der Kickphase entspricht die gespeicherte Hüftausrichtung somit der Ausrichtung in dem Bild mit der stärksten Beinstreckung. Dieser Wert wird anschließend als Kriterium für die Körperdrehung in die Bewertung einbezogen (Abschnitt~4.8).
+
+Dieser Zeitpunkt wird in der vorliegenden Arbeit als Treffmoment definiert, da die stärkste Beinstreckung dem Bewegungsablauf der betrachteten Techniken entsprechend am Ende der Kickbewegung liegt. Während der Kickphase nimmt der Kniewinkel im Zuge der Beinstreckung zu. Sein größter Wert wird somit bei der stärksten Streckung des Kickbeins erreicht. Dieser Zeitpunkt wird als derjenige Zeitpunkt betrachtet, an dem der Kick das Ziel erreichen würde.
+
+Unterschiedlich ist, wie die zum Treffmoment bestimmte Hüftausrichtung bewertet wird. Die drei Techniken unterscheiden sich darin, welche Ausrichtung des Beckens beziehungsweise der Hüfte sie anstreben (Tabelle~\ref{tab:hip_alignment_technique}).
+
+Beim \textit{Front Kick} soll das Kickbein in Blickrichtung des Beckens geführt werden. Angestrebt wird daher eine möglichst geringe Hüftrotation, sodass ein kleiner Messwert als besser bewertet wird. Beim \textit{Spinning Back Kick} ist dagegen eine möglichst große Hüftrotation erwünscht. Am Ende der Drehung zeigt der Rücken zum Ziel, sodass der Messwert nahe bei 180° liegen soll. Der Messwert wird dabei direkt in die Bewertung einbezogen.
+
+Beim \textit{Roundhouse Kick} soll das Becken quer zur Kickrichtung ausgerichtet sein. Der angestrebte Wert beträgt 90° und liegt damit in der Mitte des Wertebereichs. Sowohl eine geringere als auch eine stärkere Rotation weichen von der gewünschten Ausrichtung ab. Daher wird nicht der Messwert selbst bewertet, sondern dessen Abstand zum Zielwert von 90° (Gleichung~\ref{eq:rotationerror}, Abschnitt~4.8).
+
+Die Bestimmung eines Treffmoments wurde eingeführt, weil die Verwendung eines Maximums über die gesamte Kickphase bei den rotationsbasierten Techniken zu einer fehlerhaften Bewertung führen kann. Beispielsweise kann der Körper beim \textit{Roundhouse Kick} zunächst die gewünschte Ausrichtung von 90° erreichen und anschließend darüber hinausdrehen. Wird die maximale Hüftrotation über die gesamte Kickphase betrachtet, würde diese spätere, stärkere Rotation als Bewertungsgrundlage verwendet. Durch die Festlegung des Treffmoments wird stattdessen die Körperausrichtung bei der stärksten Beinstreckung bewertet.
+
+Die Bestimmung eines einzelnen Bildes als Treffmoment hat jedoch auch einen Nachteil. Eine fehlerhafte Landmark-Erkennung oder eine ungenaue Bestimmung dieses Bildes kann die Bewertung stärker beeinflussen als ein über mehrere Bilder gebildeter Wert. Damit entsteht ein Zielkonflikt zwischen einer gezielten Bewertung zum Treffmoment und der Robustheit gegenüber einzelnen fehlerhaften Messungen. Dieser Zielkonflikt wird in Kapitel~6 erneut aufgegriffen.
+
+\subsection{Bewertungsfunktion}
+
+Alle Messgrößen werden mit derselben Funktion linear auf einen Wert zwischen 0 und 100 Prozent abgebildet:
+
+\begin{equation}
+\text{score}(v) = 100 \cdot \max\!\left(0,\; \min\!\left(1,\; \frac{v - v_{\text{fail}}}{v_{\text{ideal}} - v_{\text{fail}}}\right)\right)
+\label{eq:score}
+\end{equation}
+
+Dabei bezeichnet $v$ den gemessenen Wert, $v_{\text{fail}}$ den Wert, bei dem das Kriterium als vollständig nicht erfüllt gilt, und $v_{\text{ideal}}$ den Wert, ab dem die volle Punktzahl erreicht wird. Die äußeren Funktionen begrenzen das Ergebnis auf einen Bereich von 0 bis 100 Prozent. Werte außerhalb des definierten Bereichs führen somit nicht zu einer Punktzahl unter 0 oder über 100 Prozent.
+
+Die Formel kann sowohl für Kriterien verwendet werden, bei denen ein größerer Wert besser ist, als auch für Kriterien, bei denen ein kleinerer Wert besser ist. Bei der Beinstreckung ist ein größerer Kniewinkel besser. Hier gilt $v_{\text{fail}} = 131$ und $v_{\text{ideal}} = 170$ Grad. Beim Chamber-Winkel ist dagegen ein kleinerer Winkel besser. Hier gilt $v_{\text{fail}} = 100$ und $v_{\text{ideal}} = 71$ Grad. Ein gemessener Chamber-Winkel von 85 Grad ergibt damit eine Bewertung von 52 Prozent.
+
+Ein Kriterium gilt als bestanden, wenn mindestens 50 Prozent erreicht werden. Diese Schwelle beeinflusst ausschließlich die angezeigte Rückmeldung und nicht die berechnete Punktzahl.
+
+Die Bewertungsfunktion bestimmt somit lediglich, wie ein gemessener Wert zwischen den festgelegten Schwellenwerten in einen Prozentwert überführt wird. Welche Ausführung als technisch ausreichend gilt, wird durch die jeweiligen Schwellenwerte festgelegt. Der Ansatz ist damit den regelbasierten Verfahren aus Abschnitt~2.3.4 zuzuordnen.
+
+
+\subsection{Winkelberechnung} 
+Alle Gelenkwinkel werden dreidimensional aus den Weltkoordinaten berechnet. Ein Gelenkwinkel wird dabei immer durch drei \textit{Landmarks} beschrieben, nämlich zwei äußere Punkte $\vec{a}$ und $\vec{c}$ sowie den Scheitelpunkt $\vec{b}$, an dem der Winkel anliegt. Beim Kniewinkel sind es die Hüfte, das Knie und der Knöchel, wobei das Knie den Scheitelpunkt bildet. Von diesem Scheitelpunkt aus werden zwei Vektoren gebildet, $\vec{u} = \vec{a} - \vec{b}$ und $\vec{w} = \vec{c} - \vec{b}$. Der eingeschlossene Winkel $\theta$ ergibt sich anschließend über das normierte Skalarprodukt dieser beiden Vektoren:
+
+\begin{equation}
+\theta = \arccos\!\left(\frac{\vec{u} \cdot \vec{w}}{\lVert \vec{u} \rVert \, \lVert \vec{w} \rVert}\right)
+\label{eq:angle3d}
+\end{equation}
+
+Erst die Normierung durch die beiden Beträge $\lVert \vec{u} \rVert$ und $\lVert \vec{w} \rVert$ sorgt dafür, dass nur die Richtung der Vektoren in das Ergebnis eingeht und nicht deren Länge. Der Winkel ist dadurch unabhängig von der Körpergröße, weshalb für Gelenkwinkel keine zusätzliche Normierung nötig ist (Abschnitt~4.3.3). 
+Tabelle~\ref{tab:angles} listet die verwendeten Winkel und die Punkte, aus denen sie gebildet werden.
+ 
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{p{0.28\textwidth} p{0.32\textwidth} p{0.13\textwidth}}
+\hline
+\textbf{Größe} & \textbf{Punkte (Scheitel unterstrichen)} & \textbf{Dimension} \\ \hline
+Kniewinkel & Hüfte -- \underline{Knie} -- Knöchel & 3D \\
+Hüftbeugung & Schulter -- \underline{Hüfte} -- Knie & 3D \\
+Oberschenkelneigung & Vektor Hüfte$\to$Knie gegen Vertikale $(0,1,0)$ & 3D \\
+Hüftausrichtung & Becken-Blickrichtung gegen Kickrichtung & 2D, $x$-$z$-Ebene \\ \hline
+\end{tabular}
+\caption{Verwendete Winkelgrößen und ihre Definition}
+\label{tab:angles}
+\end{table}
+ 
+Die Hüftausrichtung fällt aus diesem Schema heraus, da sie als einzige Größe zweidimensional berechnet wird. Betrachtet wird nur die Draufsicht auf die $x$-$z$-Ebene, die Höhe bleibt also unberücksichtigt. Der Grund dafür ist, dass die Hüftausrichtung eine Drehung um die Längsachse des Körpers beschreibt, und diese Drehung findet in der Draufsicht statt.
+ 
+Gebildet wird der Winkel aus zwei Richtungen. Die erste ist die Becken-Blickrichtung, also die Senkrechte auf der Verbindungslinie beider Hüften. Sie gibt an, wohin das Becken zeigt. Die zweite ist die Kickrichtung, der Vektor von der Hüfte zum Knöchel des Kickbeins. Beide werden in der Draufsicht bestimmt.
+ 
+Die Hüftausrichtung ist damit ein körperrelatives Maß. Sie beschreibt die Lage des Beins zum Becken und nicht die Orientierung des Körpers im Raum. Dreht sich eine Person mitsamt Kickbein um die eigene Achse, bleibt der Wert unverändert. Genau darauf beruht die Unterscheidung der drei Techniken, denn alle drei lassen sich über denselben Winkel abbilden (Tabelle~\ref{tab:hip_alignment_technique}).
+ 
+\begin{table}[h]
+\centering
+\begin{tabular}{lll}
+\hline
+\textbf{Bein relativ zum Becken} & \textbf{Wert} & \textbf{Technik} \\ \hline
+in Blickrichtung & $\sim 0°$ & Front Kick \\
+seitlich & $\sim 90°$ & Roundhouse Kick \\
+nach hinten & $\sim 180°$ & Spinning Back Kick \\ \hline
+\end{tabular}
+\caption{Interpretation der körperrelativen Hüftausrichtung je Technik}
+\label{tab:hip_alignment_technique}
+\end{table}
+ 
+Alle drei Techniken werten die Hüftausrichtung im vollen Bereich von 0 bis 180 Grad aus. Gegen die Vertauschung der \textit{Landmarks} an der Hüfte schützt der in Abschnitt~4.3.4 beschriebene Sprungfilter, der eine Änderung von mehr als 60 Grad zwischen zwei aufeinanderfolgenden Bildern verwirft. Ohne diesen Filter würde eine einzelne vertauschte \textit{Landmark} den Wert um rund 180 Grad kippen lassen.
+
+\subsection{Kriterien und Schwellenwerte je Technik}
+Tabelle~\ref{tab:crit_front} bis Tabelle~\ref{tab:crit_dwit} listen die Bewertungskriterien der drei Techniken mit den zugehörigen \texttt{fail\_at}- und \texttt{ideal\_at}-Werten aus Gleichung~\ref{eq:score}. Die Reihenfolge entspricht der, in der das System die Kriterien berechnet.
+ 
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{c p{0.17\textwidth} p{0.33\textwidth} c c}
+\hline
+\# & \textbf{Kriterium} & \textbf{Messgröße} & \textbf{fail\_at} & \textbf{ideal\_at} \\ \hline
+1 & Beinstreckung & max. Kniewinkel, Kickphase & 131° & 170° \\
+2 & Chamber-Winkel & min. Kniewinkel, Chamberphase & 100° & 71° \\
+3 & Hüftbeugung & max. Oberschenkelneigung, Chamberphase & 50° & 90° \\
+4 & Hüftrotation & Hüftausrichtung im Treffmoment & 90° & 30° \\
+5 & Kniehöhe & Absinken des Knies während des Kicks & 0,30\,m & 0,15\,m \\
+6 & Standbein & Median Standbein-Kniewinkel, Kickphase & 180° & 165° \\
+7 & Rechamber & Rückzug vom Streckungsmaximum & 10° & 60° \\ \hline
+\end{tabular}
+\caption{Bewertungskriterien des \textit{Front Kick}}
+\label{tab:crit_front}
+\end{table}
+ 
+Für den \textit{Front Kick} lassen sich zwei der Schwellen an gemessener Kinematik ausrichten. Lee et al. \cite{Lee2005} berichten bei vier erfahrenen Athleten einen Kniewinkel von 71,0~$\pm$~1,33 Grad im Moment der stärksten Beugung und 131,2~$\pm$~2,25 Grad im Treffmoment.
+ 
+Für das Kriterium Chamber-Winkel wird der Literaturwert als \texttt{ideal\_at} übernommen, denn 71 Grad entsprechen genau der im Schnitt erreichten maximalen Beugung. Für \texttt{fail\_at} eignet sich der Literaturwert dagegen nicht. Die berichtete Streuung stammt aus einer kleinen Stichprobe erfahrener Athleten und sagt nichts darüber aus, ab welchem Winkel gar kein erkennbarer Chamber mehr vorliegt. Hierfür wird stattdessen dieselbe Schwelle von 100 Grad verwendet, mit der auch die Chamber-Phase erkannt wird (Abschnitt~4.4.4). Mit 29 Grad Abstand zum Literaturmittel bleibt genug Spielraum, damit eine weniger enge, aber erkennbare Ausführung noch gewertet wird. Ein Kniewinkel oberhalb von 100 Grad lässt sich dagegen kaum noch als angezogenes Bein deuten.
+ 
+Für das Kriterium Beinstreckung wird der Literaturwert im Treffmoment als \texttt{fail\_at} von 131 Grad übernommen. Ein Kick, der in der Luft nicht einmal die Streckung erreicht, die Lee et al. beim tatsächlichen Auftreffen auf ein Ziel gemessen haben, gilt als unzureichend gestreckt. Der Wert \texttt{ideal\_at} liegt bei 170 Grad, weil die vorliegende Anwendung Ausführungen in die Luft auswertet, bei denen das Bein über den durch ein Ziel gestoppten Wert hinaus weiterstreckt, bevor der Rückzug einsetzt. Rechnerisch sind höchstens 180 Grad möglich, und das nur, wenn Hüfte, Knie und Sprunggelenk exakt auf einer Linie gemessen werden. Für die Wirkung des Kicks ist ein vollständig durchgestrecktes Knie zudem nicht erforderlich, wie der im Treffmoment gemessene Wert von 131,2 Grad zeigt.
+ 
+Die übrigen fünf Schwellen des \textit{Front Kick} sind expertenbasiert gesetzt, da für sie keine publizierten Referenzwerte vorliegen.
+ 
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{c p{0.17\textwidth} p{0.33\textwidth} c c}
+\hline
+\# & \textbf{Kriterium} & \textbf{Messgröße} & \textbf{fail\_at} & \textbf{ideal\_at} \\ \hline
+1 & Beinstreckung & max. Kniewinkel, Kickphase & 131° & 170° \\
+2 & Hüftrotation & Abweichung der Hüftausrichtung im Treffmoment von 90° (Gl.~\ref{eq:rotationerror}) & 60° & 20° \\
+3 & Chamber-Winkel & min. Kniewinkel, Chamberphase & 100° & 71° \\
+4 & Hüftbeugung & max. Oberschenkelneigung, Chamberphase & 50° & 90° \\
+5 & Kniehöhe & Absinken des Knies während des Kicks & 0,30\,m & 0,15\,m \\
+6 & Standbein & Median Standbein-Kniewinkel, Kickphase & 180° & 165° \\
+7 & Rechamber & Rückzug vom Streckungsmaximum & 10° & 60° \\ \hline
+\end{tabular}
+\caption{Bewertungskriterien des \textit{Roundhouse Kick}}
+\label{tab:crit_round}
+\end{table}
+ 
+Ein Kernkriterium des \textit{Roundhouse Kick} ist die Hüftrotation, denn erst die Drehung des Beckens erzeugt die bogenförmige Bahn, die den \textit{Roundhouse Kick} von den beiden anderen Techniken unterscheidet (Abschnitt~2.2.2). Die übrigen sechs Kriterien sind mit denen des \textit{Front Kick} identisch.
+ 
+Auch der \textit{Front Kick} besitzt ein Kriterium zur Hüftrotation. Die Hüftausrichtung nimmt Werte zwischen 0 und 180 Grad an (Abschnitt~4.7), und die drei Techniken belegen darin unterschiedliche Zielwerte. Beim \textit{Front Kick} wird möglichst wenig Drehung angestrebt, der Idealwert liegt mit 30 Grad also im unteren Bereich dieser Skala. Beim \textit{Roundhouse Kick} liegt das Ziel dagegen bei 90 Grad im Treffmoment und damit in deren Mitte. Sowohl eine zu geringe als auch eine zu weit gehende Rotation gilt als Fehler. Da die Bewertungsfunktion aus Gleichung~\ref{eq:score} monoton verläuft, wird nicht der Rohwert eingesetzt, sondern seine Abweichung vom Idealwert:
+\begin{equation}
+\theta_{\text{Fehler}} = \left|\, \texttt{hip\_alignment\_at\_impact} - 90^{\circ} \,\right|
+\label{eq:rotationerror}
+\end{equation}
+Diese Abweichung geht mit \texttt{fail\_at}~=~60 Grad und \texttt{ideal\_at}~=~20 Grad in Gleichung~\ref{eq:score} ein. Angezeigt wird dennoch der Rohwert, damit die Rückmeldung nachvollziehbar bleibt. Die Fehlerrichtung wird gesondert im Rückmeldungstext benannt, fließt aber nicht in die Punktzahl ein. Ein Rohwert von 70 Grad und einer von 110 Grad sind beide 20 Grad von 90 Grad entfernt und erhalten dieselbe Punktzahl, obwohl sie entgegengesetzte Ausführungsfehler beschreiben.
+ 
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{c p{0.17\textwidth} p{0.33\textwidth} c c}
+\hline
+\# & \textbf{Kriterium} & \textbf{Messgröße} & \textbf{fail\_at} & \textbf{ideal\_at} \\ \hline
+1 & Beinstreckung & max. Kniewinkel, Kickphase & 131° & 170° \\
+2 & Chamber-Winkel & min. Kniewinkel, Chamberphase & 100° & 71° \\
+3 & Körperdrehung & Hüftausrichtung im Treffmoment & 110° & 170° \\
+4 & Standbein & Median Standbein-Kniewinkel, Kickphase & 180° & 165° \\
+5 & Rechamber & Rückzug vom Streckungsmaximum & 10° & 60° \\ \hline
+\end{tabular}
+\caption{Bewertungskriterien des \textit{Spinning Back Kick}}
+\label{tab:crit_dwit}
+\end{table}
+ 
+Beim \textit{Spinning Back Kick} bleibt der Kniewinkel für die Bewertung zentral, obwohl er für die Phasenerkennung ausscheidet (Abschnitt~4.4.4). Kim et al. \cite{Kim2011} ließen zwölf Taekwondo-Athleten mit Schwarzgurt vier verschiedene Kicktechniken ausführen und verglichen deren Gelenkkinematik. Eine ihrer Messgrößen ist der Bewegungsumfang des Knies, also die Spanne zwischen der stärksten Beugung und der stärksten Streckung im Verlauf der Bewegung. Beim \textit{Spinning Back Kick} fiel diese Spanne mit 97,0~$\pm$~7,5 Grad am größten aus. Das Knie öffnet sich hier also weiter als bei den drei übrigen Techniken. Passend dazu beschreiben Kim et al. die Bewegung als \textit{push-like movement}, bei dem sich Hüfte und Knie im Treffmoment gleichzeitig strecken \cite{Kim2011}. Die Geschwindigkeit des Kicks entsteht bei dieser Technik also aus der gemeinsamen Streckung, bei den Schnapptechniken dagegen aus dem schnellen Ausschnappen des Unterschenkels. Zurückgezogen wird das Bein bei allen drei Techniken, was als Kriterium Rechamber erfasst wird.
+ 
+Für die Beinstreckung gilt derselbe Bereich wie bei den beiden anderen Techniken, also 131 Grad für null Prozent und 170 Grad für die volle Punktzahl. Die Begründung ist hier allerdings eine andere. Beim \textit{Front Kick} stützt sich der untere Wert auf die 131,2 Grad von Lee et al., ein vergleichbarer Messwert existiert für den \textit{Spinning Back Kick} nicht. Beide Werte sind für diese Technik deshalb expertenbasiert gesetzt und stützen sich auf die beschriebene Bewegungscharakteristik. Wenn Hüfte und Knie im Treffmoment gemeinsam strecken, endet die Bewegung nahe der vollen Streckung.
+ 
+Beim \textit{Spinning Back Kick} entscheidet zusätzlich die aufsummierte Nachdrehung darüber, welcher von zwei Rückmeldungstexten zur Körperdrehung angezeigt wird. Liegt sie über 60 Grad, meldet das System eine zu weit durchgedrehte Ausführung, andernfalls eine zu geringe Drehung. In die Punktzahl geht die Nachdrehung nicht ein.
+ 
+Zeigt der Rücken am Ende der Eindrehung zum Ziel, erreicht die Hüftausrichtung 180 Grad (Abschnitt~4.7). Die volle Punktzahl wird dennoch bereits bei 170 Grad vergeben, denn 180 Grad ist die Obergrenze des Winkelmaßes. Messrauschen kann einen Wert an dieser Grenze nur noch verkleinern, und die Hüften verdecken sich bei starker Drehung gegenseitig, sodass die Beckenausrichtung gerade dort am ungenauesten ist. Ein Idealwert von 180 Grad würde die volle Punktzahl damit von der Messgenauigkeit abhängig machen und nicht von der Ausführung. Nach unten grenzt \texttt{fail\_at}~=~110 Grad die Technik ab. Ein Wert in dieser Größenordnung bedeutet, dass das Becken kaum über die seitliche Stellung hinauskommt, wie sie für den \textit{Roundhouse Kick} kennzeichnend ist. Die Drehung des \textit{Spinning Back Kick} ist damit nicht ausgeführt.
+ 
+Ein Vergleich mit dem Kriterienkatalog von Wang et al. (Abschnitt~3.1) zeigt, dass sich vier der sechs dortigen Positionen in der vorliegenden Arbeit wiederfinden, nämlich Standbein-Streckung, Kicktechnik aus Beinstreckung und Kniehöhe, Chamber und Rückzug. Landeposition und Handhaltung fehlen, da weder die \textit{Landmarks} am Fuß noch am Handgelenk ausgewertet werden.
+
+\subsection{Abbruchbedingungen bei der Bewertung}
+Nicht jedes Video enthält einen vollständig ausgeführten Kick. Alle drei Techniken brechen die Bewertung vorzeitig ab, wenn im Video nie eine Kickphase erreicht wird. Ausschlaggebend ist dafür das Merkmal \texttt{kick\_detected}, das beim ersten Wechsel in die Kickphase gesetzt wird. Bleibt es auf \texttt{False}, berechnet \texttt{evaluate()} nur das erste Kriterium, also die Beinstreckung und kehrt danach sofort zurück. Die übrigen Kriterien entfallen.
+ 
+Für dieses eine Kriterium ergibt sich dann zwangsläufig ein Wert von 0 Prozent. Der zugehörige Messwert \texttt{max\_knee\_in\_kick} wird nämlich nur während der Kickphase fortgeschrieben und behält ohne sie seinen Startwert 0,0. Da der Gesamtwert der Mittelwert über alle zurückgegebenen Kriterien ist (Abschnitt~4.10), fällt auch dieser auf 0.
+
+Das Ergebnis ist in dieser Version nicht immer angemessen. Verfehlt eine Ausführung die Erkennungsschwelle nur knapp, wird sie genauso mit 0 Prozent bewertet wie ein Video, in dem überhaupt nicht getreten wurde. Aus diesem Grund wurde die Schwelle für den Übergang in die Kickphase bewusst niedrig angesetzt (Abschnitt~4.4.4). Beim \textit{Front Kick} und beim \textit{Roundhouse Kick} liegt sie mit 131 Grad genau auf dem \texttt{fail\_at}-Wert der Beinstreckung, sodass eine gerade noch erkannte Ausführung bei 0 Prozent beginnt und mit zunehmender Streckung mehr Punkte erhält. 
+
+Beim \textit{Spinning Back Kick} wird die Kickphase dagegen anhand der Fußhöhe und des Knöchelabstands erkannt. Der Kniewinkel ist für die Erkennung hier nicht ausschlaggebend, sodass eine Ausführung mit einem Kniewinkel unter 131 Grad trotzdem erkannt und bewertet werden kann. Das grundsätzliche Problem bleibt jedoch bestehen: Wird die Erkennungsschwelle nicht erreicht, wird keine abgestufte Bewertung vorgenommen, sondern die Ausführung mit 0 Prozent bewertet. Die Schwelle bestimmt damit weiterhin, ob eine Bewertung stattfindet, und nicht nur, wie gut die Ausführung ist. Dieser Zielkonflikt wird in Kapitel~6 erneut aufgegriffen.
+
+\subsection{Gesamtergebnis}
+Der angezeigte Gesamtwert ist der ungewichtete arithmetische Mittelwert über alle $n$ zurückgegebenen Kriterienwerte:
+
+\begin{equation}
+\text{overall} = \frac{1}{n} \sum_{i=1}^{n} \text{score}_i
+\label{eq:overall}
+\end{equation}
+Aus dem Gesamtwert wird eine Sternebewertung zwischen 1 und 5 abgeleitet:
+\begin{equation}
+\text{stars} = \min\!\left(5,\ \max\!\left(1,\ \operatorname{round}\!\left(\frac{\text{overall}}{20}\right)\right)\right)
+\label{eq:stars}
+\end{equation}
+
+Die verbale Einordnung erfolgt in vier Stufen: \glqq{}Sehr gut!\grqq{} ab 90 Prozent, \glqq{}Gut!\grqq{} ab 75 Prozent, \glqq{}Solide\grqq{} ab 50 Prozent, andernfalls \glqq{}Übungsbedarf\grqq{}. Die Tipps-Liste enthält die Rückmeldungstexte aller Kriterien, deren Wert unter 50 Prozent liegt.
+ 
+Eine Gewichtung der Kriterien findet nicht statt. Alle Kriterien gehen gleich stark in Gleichung~\ref{eq:overall} ein. Dadurch kann eine falsch gewählte Technik das Gesamtergebnis nur begrenzt beeinflussen. Wird beispielsweise ein sauber ausgeführter \textit{Roundhouse Kick} als \textit{Spinning Back Kick} bewertet, beträgt die Hüftausrichtung im Treffmoment etwa 90° statt der angestrebten 170°. Damit liegt sie unterhalb des \texttt{fail\_at}-Wertes von 110° und erhält für die Körperdrehung 0 Prozent. Die übrigen vier Kriterien bewerten Chamber, Streckung, Standbein und Rückzug und können weiterhin hohe Werte erreichen. Dadurch sind theoretisch bis zu 80 Prozent möglich. Ein Testvideo erreicht in diesem Fall rund 78 Prozent. Auch diese Einschränkung wird in Kapitel~6 aufgegriffen.
+
+\subsection{Geschwindigkeitsmessung}
+Die Fußgeschwindigkeit wird aus der Positionsänderung des Kickknöchels zwischen zwei aufeinanderfolgenden Bildern berechnet:
+
+\begin{equation}
+v_{\text{Fuß}} = d \cdot f \cdot 3{,}6 \quad [\text{km/h}]
+\label{eq:speed}
+\end{equation}
+
+Die Variable $d$ ist die euklidische Distanz zwischen zwei aufeinanderfolgenden Knöchelpositionen in Metern und $f$ die Bildrate in Bildern pro Sekunde. Der Faktor $3{,}6$ rechnet von Metern pro Sekunde in Kilometer pro Stunde um. Der so berechnete Wert wird über drei Bilder medianglättet und als Maximum über Chamber- und Kickphase geführt.
+ 
+Die Weltkoordinaten von MediaPipe sind hüftzentriert (Abschnitt~2.3.3). Gleichung~\ref{eq:speed} misst deshalb die Fußbewegung relativ zur Hüfte und nicht absolut im Raum. Verlagert sich der ganze Körper nach vorn, etwa durch ein Vorspringen beim Kick, fehlt dieser Anteil im Ergebnis. Die Geschwindigkeit dient allein der Anzeige und fließt in kein Bewertungskriterium ein.
+
+\subsection{Nutzerschnittstelle und Rückmeldung}
+Die Technik wird vor der Analyse vom Nutzer ausgewählt, eine automatische Erkennung findet nicht statt. Zusätzlich lässt sich die Modellvariante zwischen \textit{Lite, Full} und \textit{Heavy} umschalten. Für eine Endanwendung wäre diese Wahl ungewöhnlich, sie ist als Eigenschaft des Prototyps zu verstehen und erlaubt es, den Einfluss der Modellgröße systematisch zu untersuchen (Abschnitt~4.2.1).
+ 
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.6\textwidth]{Images/app_technikwahl.png}
+    \caption{Technik- und Modellauswahl in der Weboberfläche vor dem Videoupload.}
+    \label{fig:app_technikwahl}
+\end{figure}
+ 
+Nach Abschluss der Analyse liefert die Anwendung zwei Ausgaben. Die erste ist ein annotiertes Video. Es zeigt das Skelett aus den 33 \textit{Landmarks} mit grün eingefärbten Verbindungslinien, wobei Punkt- und Liniendicke mit der Videoauflösung skalieren.
+ 
+Darüber liegt ein Debug-Overlay mit den aktuellen Messwerten: Phase, Kniewinkel, Hüftbeugung, Kickseite, Oberschenkelneigung, Startbild, Kickdauer, Sichtbarkeit und Hüftausrichtung. Beim \textit{Spinning Back Kick} kommen die Ausrichtung im Treffmoment, die Nachdrehung, die Gesamtdrehung, der Fußabstand und die Fußhöhe hinzu.
+ 
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.6\textwidth]{Images/app_video_overlay.png}
+    \caption{Annotiertes Ausgabevideo mit Skelett- und Debug-Overlay, hier im Moment der Kickstreckung.}
+    \label{fig:app_video_overlay}
+\end{figure}
+ 
+Die zweite Ausgabe ist die Ergebniskarte. Sie zeigt den Gesamtwert als Zahl von 0 bis 100, die Fußgeschwindigkeit in km/h, die verbale Einordnung und die Sternebewertung. Darunter steht für jedes Kriterium eine Zeile mit Bezeichnung, Balken und Prozentwert. Die Balken folgen einem Ampelschema und sind ab 90 Prozent grün, ab 75 Prozent gelb und darunter rot. Am Ende listet die Anwendung die Rückmeldungen aller nicht bestandenen Kriterien auf (Abschnitt~4.10).
+ 
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.45\textwidth]{Images/ergebniskarte_gelb.png}\hfill
+    \includegraphics[width=0.45\textwidth]{Images/ergebniskarte_gruen.png}
+    \caption{Ergebniskarten mit Gesamtwert, Sternebewertung, Kriterienliste und Tipps.}
+    \label{fig:app_ergebniskarte}
+\end{figure}
+
+Vor der ersten Aufnahme erscheint automatisch ein Hinweistext zu den Aufnahmebedingungen (Abschnitt~4.14), der über eine Schaltfläche erneut aufrufbar ist.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.6\textwidth]{Images/app_filmingtips.png}
+    \caption{Hinweisdialog zu den Aufnahmebedingungen vor der Analyse.}
+    \label{fig:app_filmingtips}
+\end{figure}
+
+\subsection{Weitere Funktionen}
+Analysierte Ausführungen lassen sich speichern. Das Video wird dabei als MP4 abgelegt, die Bewertung als JSON. Der Verlauf ist pro Gerät getrennt. Dafür erzeugt das Frontend beim ersten Aufruf eine zufällige Kennung im \texttt{localStorage} des Browsers, schreibt sie beim Speichern mit und verwendet sie beim Abruf als Filter.
+ 
+Diese Kennung dient allein der Personalisierung. Wer den Browser wechselt oder die Browserdaten löscht, verliert den Zugang zum bisherigen Verlauf. Für einen Prototyp, der die eigenen Ausführungen verarbeitet, ist das vertretbar, für einen Einsatz mit mehreren Personen wäre eine Authentifizierung erforderlich.
+ 
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.6\textwidth]{Images/app_verlauf.png}
+    \caption{Verlaufsseite mit gespeicherten Analysen eines Geräts.}
+    \label{fig:app_verlauf}
+\end{figure}
+ 
+Ergänzend zur Bewegungsanalyse enthält die Anwendung eine nach Gurtgrad gegliederte Vokabelliste sowie eine Vokabelabfrage im Multiple-Choice-Format. Abgedeckt sind die koreanischen Fachbegriffe der Gürtelprüfungen, die in Abschnitt~1.3 genannt werden.
+ 
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.45\textwidth]{Images/app_vokabeln.png}\hfill
+    \includegraphics[width=0.45\textwidth]{Images/app_vokabeltest.png}
+    \caption{Gürtelabhängige Vokabelliste und Multiple-Choice-Abfrage.}
+    \label{fig:app_vokabeln}
+\end{figure}
+
+\subsection{Aufnahmebedingungen}
+Die Anforderungen an die Aufnahme werden ausschließlich als Hinweistext vermittelt (Abbildung~\ref{fig:app_filmingtips}). Gefordert werden eine Aufnahme von der Seite oder schräg im 45-Grad-Winkel, nur eine Person im Bild, ein auch im höchsten Punkt des Kicks vollständig sichtbarer Körper, ein Abstand von etwa drei bis vier Metern, eine möglichst ruhige Kamera, nur ein Kick pro Video, gute Beleuchtung, ein ruhiger Hintergrund und eine Hochkant-Aufnahme. 
+
+Technisch erzwungen wird davon nichts. Perspektive, Abstand, Beleuchtung und Hintergrund werden nicht geprüft. Befinden sich mehrere Personen im Bild, wertet das System die von MediaPipe je Bild gelieferte Pose aus, die dabei zwischen den Bildern wechseln kann. Lediglich die Bildrate wird aus den Metadaten gelesen, mit einem Default Wert bei 30 Bildern pro Sekunde (Abschnitt~4.3.1).
+ 
+Lässt sich die Datei nicht öffnen, wird der Auftragsstatus auf \textit{error} gesetzt und die Meldung \glqq{}Konnte Video nicht öffnen.\grqq{} ausgegeben. Wird keine Person erkannt, werden schlicht keine Messwerte erhoben.
+
+\section{Evaluation \& Bewertung}
+\newcommand{\evph}[1]{[\textit{#1}]}
+\newcommand{\Nteiln}{19}
+\newcommand{\Nfreitext}{16}
+\newcommand{\AlterMittel}{29{,}9}
+\newcommand{\AlterSD}{8{,}8}
+\newcommand{\AlterMedian}{27}
+\newcommand{\AlterMin}{21}
+\newcommand{\AlterMax}{49}
+\newcommand{\SUSm}{88{,}0}
+\newcommand{\SUSsd}{9{,}5}
+\newcommand{\SUSmd}{90{,}0}
+\newcommand{\SUSmin}{67{,}5}
+\newcommand{\SUSmax}{100}
+ 
+\subsection{Zielsetzung und Aufbau der Evaluation}
+\label{sec:eval_ziel}
+Die Forschungsfrage aus Abschnitt~1.3 zerfällt für die Evaluation in zwei Teile, die unterschiedliche Verfahren verlangen.
+ 
+Der erste Teil betrifft die Frage, ob die Rückmeldungen für die Zielgruppe verständlich, glaubwürdig und nützlich sind. Ein regelbasiertes System kann technisch korrekt rechnen und trotzdem unbrauchbar sein, wenn niemand versteht, was ein Kriterienwert bedeutet oder was daraus folgt. Dieser Teil wurde als Nutzerstudie mit Taekwondo-Trainierenden durchgeführt und wird in den Abschnitten~\ref{sec:eval_methode} bis~\ref{sec:eval_freitext} berichtet.
+ 
+Der zweite Teil betrifft die messtechnische Güte, also die Frage, wie stabil die berechneten Größen sind und wie gut sie mit einem fachlichen Urteil übereinstimmen. Dieser Teil erfordert einen annotierten Videodatensatz und ein Vergleichsurteil erfahrener Trainerinnen und Trainer. Er wurde im Rahmen dieser Arbeit nicht durchgeführt. Abschnitt~\ref{sec:eval_technisch} legt das Vorgehen dafür fest und leitet aus Kapitel~4 die konkreten Prüfpunkte ab.
+ 
+Diese Trennung ist wichtig für die Einordnung der Ergebnisse. Die Nutzerstudie kann zeigen, ob das System als Trainingswerkzeug taugt. Sie kann nicht zeigen, ob seine Messwerte richtig sind, denn die Teilnehmenden beurteilen die Bewertung anhand ihres eigenen Eindrucks und nicht anhand einer Referenzmessung.
+
+\subsection{Hypothesen}
+\label{sec:eval_hyp}
+Die Nutzerstudie prüft sechs Hypothesen. Eine Hypothese bezieht sich auf die Gebrauchstauglichkeit insgesamt und fünf auf die im Fragebogen erhobenen Bereiche Aufnahme, Verständlichkeit, Vertrauen, Nützlichkeit und Nutzungsabsicht.
+ 
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{p{0.05\textwidth} p{0.47\textwidth} p{0.30\textwidth}}
+\hline
+& \textbf{Aussage} & \textbf{Datenquelle} \\ \hline
+H1 & Der SUS-Wert liegt über dem Vergleichswert von 68 & SUS-Block \\
+H2 & Die Anwendung ist einfach zu bedienen & C1 Aufnahme \\
+H3 & Die Bewertung ist nachvollziehbar & C2 Verständlichkeit \\
+H4 & Die Nutzenden vertrauen der Bewertung & C3 Vertrauen \\
+H5 & Die Anwendung wird als nützlich wahrgenommen & C4 Nützlichkeit \\
+H6 & Es besteht die Absicht, die Anwendung zu nutzen & C5 Nutzungsabsicht \\ \hline
+\end{tabular}
+\caption{Hypothesen der Nutzerstudie und ihre Datengrundlage}
+\label{tab:eval_hyp}
+\end{table}
+ 
+Alle sechs Hypothesen sind deskriptiv angelegt. Sie fragen danach, ob die Zustimmung deutlich über dem Neutralwert liegt, und nicht danach, ob ein Zusammenhang zwischen Merkmalen besteht. Die Stichprobe ist eine Gelegenheitsstichprobe ohne Kontrollgruppe, weshalb kausale Aussagen ohnehin ausscheiden.
+
+\subsection{Auswertungsverfahren}
+\label{sec:eval_auswertung}
+Die Auswertung erfolgt deskriptiv. Für jede Aussage werden der Mittelwert, der Median und der Zustimmungsanteil berichtet, also der Anteil der Antworten auf den beiden oberen Skalenstufen. Eine Hypothese gilt als gestützt, wenn die Zustimmung zu den zugehörigen Aussagen deutlich überwiegt.
+ 
+Auf Signifikanztests wird bewusst verzichtet. Sie würden hier wenig beitragen, denn ein Test gegen den Skalenmittelpunkt prüft die Annahme, die Befragten seien im Mittel unentschieden. Diese Annahme vertritt niemand ernsthaft, und ihre Widerlegung wäre kein Erkenntnisgewinn. Hinzu kommt, dass die vorliegende Gelegenheitsstichprobe keine Zufallsauswahl darstellt. Ein Schluss auf eine Grundgesamtheit, für den ein solcher Test gedacht ist, wäre damit ohnehin nicht zulässig.
+ 
+Die negativ gepolten Aussagen werden nicht umkodiert, sondern mit ihren Rohwerten berichtet und in den Tabellen mit einem Minuszeichen gekennzeichnet. Bei ihnen bedeutet ein niedriger Wert ein gutes Ergebnis. Auf die Bildung von Skalenmittelwerten über mehrere Aussagen hinweg wird verzichtet, da die einzelnen Aussagen konkreter und aussagekräftiger sind als ein zusammengefasster Wert.
+ 
+Eine Ausnahme bildet die System Usability Scale. Sie ist ein etabliertes Instrument mit festgelegter Berechnungsvorschrift und wird deshalb als Gesamtwert berichtet (Abschnitt~\ref{sec:eval_weitere}).
+ 
+Für H6 gilt eine weitere Besonderheit. Die Nutzungsabsicht wurde nicht als fünfstufige Skala erhoben, sondern als Mehrfachauswahl mit zwei Optionen zum Ankreuzen. Berichtet werden deshalb nur die Auswahlhäufigkeiten.
+
+\subsection{Methodisches Vorgehen der Nutzerstudie}
+\label{sec:eval_methode}
+Die Erhebung fand im laufenden Taekwondo-Training statt. Die Teilnehmenden wurden in Zweiergruppen eingeteilt, die sich die Anwendung gemeinsam ansahen.
+ 
+Diese Aufteilung folgt aus einer Eigenschaft des Systems selbst. Die Anwendung wertet ein fertiges Video aus, und dieses Video muss jemand aufnehmen. Ein Kick lässt sich nicht sinnvoll filmen, während man ihn ausführt. In einer Zweiergruppe kann abwechselnd eine Person treten und die andere filmen, sodass beide dieselbe Anwendung aus beiden Rollen kennenlernen. Zugleich entspricht das der Situation, in der die Anwendung später eingesetzt würde, nämlich im Training mit Trainingspartner.
+ 
+Vor der Nutzung erhielten die Teilnehmenden eine kurze mündliche Einweisung. Diese umfasste, worum es sich bei der Anwendung handelt und was sie grundsätzlich tut. Bewusst nicht vermittelt wurden Bedienschritte, die Bedeutung einzelner Kriterien oder Hinweise zur Aufnahme, die über die in der Anwendung selbst hinterlegten hinausgehen. Der Ausgangspunkt war also eine Person, die weiß, wozu die Anwendung gedacht ist, sie aber selbst erschließen muss.
+ 
+Anschließend hatten die Gruppen Zeit, sämtliche Funktionen frei auszuprobieren. Es gab keine vorgegebenen Aufgaben und keine Zeitvorgabe. Diese offene Form wurde gewählt, weil geprüft werden sollte, ob sich die Anwendung selbst erklärt, und nicht, ob sich eine Anleitung befolgen lässt. Danach füllte jede Person den Fragebogen einzeln aus.
+ 
+Der Fragebogen war anonym, die Teilnahme freiwillig. Er gliedert sich in acht Blöcke: Angaben zur Person und zur Trainingserfahrung, Nutzungskontext, Kick-Analyse mit vier Aussagenblöcken zu Aufnahme, Verständlichkeit, Vertrauen und Nützlichkeit, technische Erkennung, Vokabelfunktion, Design, die System Usability Scale sowie vier offene Fragen. Die Aussagenblöcke wurden auf einer fünfstufigen Skala von \glqq{}Stimme überhaupt nicht zu\grqq{} bis \glqq{}Stimme voll zu\grqq{} beantwortet.
+ 
+Ein Teil der Aussagen ist bewusst negativ formuliert, etwa \glqq{}Ich hatte den Eindruck, dass die App meinen Kick teilweise falsch bewertet\grqq{}. Solche Aussagen erschweren ein gedankenloses Durchklicken. In den folgenden Tabellen sind sie mit einem Minuszeichen gekennzeichnet und mit ihren Rohwerten angegeben. Bei ihnen bedeutet ein \emph{niedriger} Wert ein gutes Ergebnis.
+
+\subsection{Stichprobe}
+\label{sec:eval_stichprobe}
+An der Befragung nahmen \Nteiln{} Personen teil. Das Durchschnittsalter beträgt \AlterMittel{} Jahre bei einer Standardabweichung von \AlterSD{} Jahren, der Median liegt bei \AlterMedian{} Jahren und die Spanne reicht von \AlterMin{} bis \AlterMax{} Jahren. Die Stichprobe deckt damit sowohl jüngere als auch deutlich ältere Trainierende ab, was für die Beurteilung der Bedienbarkeit günstig ist.
+ 
+Zwei Merkmale der Stichprobe sind für die Einordnung der Ergebnisse wichtig. Erstens liegt der Schwerpunkt bei den unteren Gurtgraden: Fünfzehn der \Nteiln{} Personen tragen Weiß, Gelb, Gelb-Grün oder Grün, nur drei einen Rot- oder Schwarzgurt. Die Bewertung stammt also überwiegend von Trainierenden, die selbst noch beim Erlernen der Techniken sind, und nicht von erfahrenen Prüferinnen und Prüfern. Zweitens hatten zwölf Personen zuvor noch nie mit Videoaufnahmen gearbeitet, um ihre Technik zu kontrollieren. Für sie war nicht nur die Anwendung neu, sondern das Prinzip der Videoanalyse insgesamt.
+ 
+Alle \Nteiln{} Personen gaben an, sämtliche Funktionen ausprobiert zu haben. Den \textit{Front Kick} testeten alle, den \textit{Roundhouse Kick} 17 und den \textit{Spinning Back Kick} 14 Personen. Die am schwierigsten zu erfassende Technik ist damit am schwächsten vertreten. Tabelle~\ref{tab:eval_stichprobe} fasst die Zusammensetzung zusammen.
+ 
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{p{0.34\textwidth} p{0.50\textwidth}}
+\hline
+\textbf{Merkmal} & \textbf{Verteilung} \\ \hline
+Alter & \AlterMittel{} Jahre ($\pm$~\AlterSD{}), Spanne \AlterMin{} bis \AlterMax{} \\
+Geschlecht & 10 männlich, 9 weiblich \\
+Gürtelgrad & 1 Weiß, 5 Gelb, 5 Gelb-Grün, 4 Grün, 1 Blau-Rot, 1 Rot, 1 Rot-Schwarz, 1 Schwarz \\
+Trainingsdauer & 2 unter 1 Jahr, 10 ein bis drei Jahre, 5 drei bis fünf Jahre, 2 über 5 Jahre \\
+Trainingshäufigkeit & 7 einmal, 10 zweimal, 2 dreimal pro Woche \\
+Vorerfahrung mit Videoanalyse & 7 gelegentlich, 12 keine \\
+Getestete Techniken & 19 \textit{Front Kick}, 17 \textit{Roundhouse Kick}, 14 \textit{Spinning Back Kick} \\ \hline
+\end{tabular}
+\caption{Zusammensetzung der Stichprobe ($n = \Nteiln$)}
+\label{tab:eval_stichprobe}
+\end{table}
+
+\subsection{Ergebnisse zur Kick-Analyse}
+\label{sec:eval_kick}
+Die folgenden Tabellen führen die Aussagen der vier Blöcke zur Kick-Analyse mit ihren Mittelwerten, Medianen und Zustimmungsanteilen auf.
+ 
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{p{0.46\textwidth} c c c}
+\hline
+\textbf{Aussage} & \textbf{M} & \textbf{Md} & \textbf{Zust.} \\ \hline
+Das Aufnehmen der Videos war unkompliziert & 4,74 & 5 & 100\,\% \\
+Mir war klar, wie ich die Kamera positionieren musste & 4,47 & 5 & 89\,\% \\
+Ich war mir unsicher, ob ich richtig im Bild stehe ($-$) & 2,47 & 2 & 21\,\% \\ \hline
+\end{tabular}
+\caption{Aussagen zur Aufnahmesituation ($n = \Nteiln$)}
+\label{tab:eval_aufnahme}
+\end{table}
+ 
+Die Aufnahme selbst bereitete keine Schwierigkeiten, womit H2 gestützt ist. Alle Teilnehmenden stimmten zu, dass sie unkompliziert war, und 89 Prozent wussten, wie die Kamera zu positionieren ist. Die Unsicherheit über die eigene Position im Bild fällt mit einem Mittelwert von 2,47 gering aus, wenn auch nicht vernachlässigbar: Vier Personen stimmten hier zu.
+ 
+Diesem positiven Bild steht eine andere Angabe gegenüber. Auf die Frage, wie oft ein Video neu aufgenommen werden musste, antworteten nur sechs Personen mit \glqq{}gar nicht\grqq{}. Neun mussten einmal und vier zweimal nachdrehen. Dreizehn der \Nteiln{} Teilnehmenden brauchten also mindestens einen zweiten Versuch.
+ 
+Dieser Widerspruch ist aufschlussreich. Das Aufnehmen wird als einfach empfunden, führt aber häufig nicht auf Anhieb zu einem verwertbaren Ergebnis. Da die Anwendung die Aufnahmebedingungen ausschließlich als Hinweistext vermittelt und technisch nicht prüft (Abschnitt~4.14), erfahren die Nutzenden erst nach der Analyse, ob die Aufnahme brauchbar war. Der Aufwand entsteht damit nicht beim Filmen, sondern beim Wiederholen.
+ 
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{p{0.46\textwidth} c c c}
+\hline
+\textbf{Aussage} & \textbf{M} & \textbf{Md} & \textbf{Zust.} \\ \hline
+Die Gesamtbewertung war für mich nachvollziehbar & 4,11 & 4 & 95\,\% \\
+Ich habe verstanden, was die einzelnen Kriterien bedeuten & 4,37 & 4 & 89\,\% \\
+Die Anzeige mit Prozentwerten und Sternen war verständlich & 4,58 & 5 & 89\,\% \\
+Es war schwer zu erkennen, warum ich diese Bewertung bekommen habe ($-$) & 2,58 & 2 & 26\,\% \\ \hline
+\end{tabular}
+\caption{Aussagen zur Verständlichkeit der Bewertung ($n = \Nteiln$)}
+\label{tab:eval_verstaendlich}
+\end{table}
+ 
+Diese Werte prüfen H3 und zugleich den in Abschnitt~1.3 erhobenen Anspruch, dass sich jede Rückmeldung auf eine benannte Messgröße und einen festgelegten Schwellenwert zurückführen lässt. Sie fallen positiv aus. 95 Prozent der Teilnehmenden hielten die Gesamtbewertung für nachvollziehbar, eine einzige Person antwortete neutral und 89 Prozent gaben an, die einzelnen Kriterien verstanden zu haben. H3 gilt damit als gestützt.
+ 
+Die vierte Aussage steht dazu allerdings in einem auffälligen Kontrast. Während 18 der \Nteiln{} Personen die Bewertung für nachvollziehbar hielten, fanden es zugleich fünf von ihnen schwer zu erkennen, warum sie diese Bewertung bekommen hatten. Beide Aussagen betreffen dasselbe Konstrukt, werden aber offensichtlich unterschiedlich beantwortet.
+ 
+Der Widerspruch löst sich, wenn die beiden Bedeutungen von \glqq{}nachvollziehbar\grqq{} getrennt werden. Ein Ergebnis kann plausibel wirken, ohne dass erkennbar ist, wie es zustande kam. Die Freitextantworten in Abschnitt~\ref{sec:eval_freitext} bestätigen genau diese Unterscheidung.
+ 
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{p{0.46\textwidth} c c c}
+\hline
+\textbf{Aussage} & \textbf{M} & \textbf{Md} & \textbf{Zust.} \\ \hline
+Ich vertraue der Bewertung der App & 4,16 & 4 & 89\,\% \\
+Die Bewertung passte zu meiner eigenen Einschätzung & 4,00 & 4 & 79\,\% \\
+Die App bewertet meinen Kick teilweise falsch ($-$) & 2,58 & 2 & 21\,\% \\ \hline
+\end{tabular}
+\caption{Aussagen zum Vertrauen in die Bewertung ($n = \Nteiln$)}
+\label{tab:eval_vertrauen}
+\end{table}
+ 
+Das Vertrauen in die Bewertung ist hoch, liegt aber unter den Werten zur Verständlichkeit. H4 ist damit gestützt, wenn auch am knappsten von allen Hypothesen. Auffällig ist die mittlere Aussage: Nur 79 Prozent fanden, dass die Bewertung zu ihrer eigenen Einschätzung passte, der Mittelwert von 4,00 ist der niedrigste aller positiv formulierten Aussagen im gesamten Fragebogen.
+ 
+Diese Aussage ist zugleich diejenige, die am wenigsten belastbar ist. Eine Übereinstimmung mit der Selbsteinschätzung belegt keine Messgenauigkeit, weil auch die Selbsteinschätzung falsch sein kann. Bei einer Stichprobe, die überwiegend aus unteren Gurtgraden besteht, ist das besonders zu bedenken. Umgekehrt gilt aber auch: Eine Abweichung muss kein Fehler des Systems sein, sondern kann eine zutreffende Korrektur einer zu wohlwollenden Selbsteinschätzung darstellen. Welcher der beiden Fälle vorliegt, lässt sich ohne das in Abschnitt~\ref{sec:eval_technisch} beschriebene Trainerurteil nicht entscheiden.
+ 
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{p{0.46\textwidth} c c c}
+\hline
+\textbf{Aussage} & \textbf{M} & \textbf{Md} & \textbf{Zust.} \\ \hline
+Die Tipps haben mir geholfen zu verstehen, was ich verbessern kann & 4,21 & 4 & 89\,\% \\
+Die App könnte mir helfen, meine Technik zu verbessern & 4,63 & 5 & 100\,\% \\
+Die App könnte mir helfen, auch ohne Trainer zu arbeiten & 4,37 & 4 & 95\,\% \\
+Für meine Technikverbesserung bringt mir die App wenig ($-$) & 1,68 & 2 & 0\,\% \\ \hline
+\end{tabular}
+\caption{Aussagen zur Nützlichkeit ($n = \Nteiln$)}
+\label{tab:eval_nutzen}
+\end{table}
+ 
+Die Nützlichkeit wird durchgehend hoch eingeschätzt und erhält die stärkste Zustimmung aller vier Blöcke. Keine einzige Person stimmte der Aussage zu, dass die Anwendung für die Technikverbesserung wenig bringt. H5 ist damit gestützt.
+ 
+Die Nutzungsabsicht (H6) wurde im Fragebogen als Mehrfachauswahl erhoben und lässt sich deshalb nur deskriptiv auswerten (Abschnitt~\ref{sec:eval_auswertung}). Alle \Nteiln{} Personen kreuzten beide Optionen an. Alle würden die Anwendung zur Vorbereitung auf Gürtelprüfungen einsetzen und alle würden sie weiterempfehlen. H6 ist in diesem Sinne gestützt.
+ 
+Ein Ergebnis mit nur einer einzigen Gegenstimme sagt allerdings wenig aus. Da keine abgestufte Antwort möglich war, lässt sich nicht unterscheiden, ob die Anwendung tatsächlich überzeugt hat oder ob das Ankreuzen einer erkennbar erwünschten Option den geringsten Aufwand darstellte. Für eine erneute Erhebung wäre die Nutzungsabsicht besser als fünfstufige Skala zu erfassen, wie es bei den übrigen Konstrukten geschehen ist. Abschnitt~\ref{sec:eval_einordnung} greift diesen Punkt auf.
+ 
+\subsection{Ergebnisse zu Erkennung, Vokabelfunktion und Bedienbarkeit}
+\label{sec:eval_weitere}
+Der Block zur technischen Erkennung erhebt, ob die Personenerkennung im Video versagte, bei welchen Modellvarianten das auftrat und wie oft eine Aufnahme wiederholt werden musste. Diese Angaben sind die einzige in der Nutzerstudie erhobene Größe, die etwas über die technische Zuverlässigkeit aussagt.
+ 
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{p{0.46\textwidth} p{0.38\textwidth}}
+\hline
+\textbf{Frage} & \textbf{Ergebnis} \\ \hline
+Probleme bei der Personenerkennung & 6 ja, 13 nein \\
+Betroffene Modellvarianten (Mehrfachnennung) & Heavy 4, Lite 2, Full 2, alle Varianten 1 \\
+Notwendige Wiederholungen der Aufnahme & 6 gar nicht, 9 einmal, 4 zweimal \\ \hline
+\end{tabular}
+\caption{Angaben zur technischen Erkennung ($n = \Nteiln$)}
+\label{tab:eval_erkennung}
+\end{table}
+ 
+Sechs der \Nteiln{} Teilnehmenden berichteten von Problemen bei der Personenerkennung. Vier von ihnen nannten dabei die Variante \textit{heavy}, jeweils zwei die Varianten \textit{lite} und \textit{full}, eine Person gab an, das Problem sei bei allen Varianten aufgetreten.
+ 
+Dieses Ergebnis ist überraschend, denn \textit{heavy} ist die größte und eigentlich genaueste Variante. Es lässt sich aus diesen Daten jedoch nicht als Aussage über die Modellgüte lesen. Bei sechs betroffenen Personen ist die Zahl zu klein, und es ist nicht erhoben worden, wie häufig die einzelnen Varianten überhaupt genutzt wurden. Wird \textit{heavy} bevorzugt ausprobiert, weil es als bestes Modell gilt, treten dort zwangsläufig auch die meisten Probleme auf. Der in Abschnitt~\ref{sec:eval_technisch} beschriebene systematische Vergleich derselben Videos über alle drei Varianten bleibt damit notwendig.
+ 
+Eine Antwort ist in sich widersprüchlich: Eine Person verneinte Erkennungsprobleme, nannte in der Folgefrage aber dennoch \textit{heavy} und gab zwei notwendige Wiederholungen an. Möglicherweise wurde die Wiederholung nicht als Erkennungsproblem verstanden.
+ 
+Die Vokabelfunktion erreicht die höchsten Werte des gesamten Fragebogens. Die Verständlichkeit der Gurtauswahl und die Passung der angezeigten Vokabeln liegen beide bei einem Mittelwert von 4,89, der Nutzen für die Prüfungsvorbereitung bei 4,79. Alle drei Aussagen erhielten von allen Teilnehmenden Zustimmung.
+ 
+Dass ausgerechnet die Nebenfunktion die Bewegungsanalyse übertrifft, ist erklärungsbedürftig. Eine plausible Erklärung ist, dass die Vokabelfunktion eine klar umrissene, unmittelbar überprüfbare Aufgabe erfüllt, während die Bewertung eines Kicks eine Einschätzung liefert, deren Richtigkeit die Nutzenden nicht selbst beurteilen können. Bei der bevorzugten Lernform, ebenfalls als Mehrfachauswahl erhoben, nannten zwölf Personen Karteikarten, neun die Auswahl aus Vorgaben und sechs die freie Texteingabe, zwei gaben keine Präferenz an. Die tatsächlich umgesetzte Auswahlfrage ist damit nicht die meistgewünschte Form.
+ 
+Das Design wurde ebenfalls gut bewertet. Die Navigation und die Übersichtlichkeit erreichen jeweils 4,58, die Lesbarkeit von Schriftgrößen und Farben 4,74. Der Gesamteindruck des Designs liegt mit 4,32 am niedrigsten, was sich mit den Einzelrückmeldungen deckt, die in Abschnitt~\ref{sec:eval_freitext} aufgegriffen werden.
+ 
+Die Gebrauchstauglichkeit wurde zusätzlich mit der System Usability Scale erhoben, einem etablierten Fragebogen aus zehn abwechselnd positiv und negativ formulierten Aussagen. Der Gesamtwert wird berechnet, indem bei den positiv formulierten Aussagen jeweils 1 vom Skalenwert abgezogen und bei den negativ formulierten der Skalenwert von 5 subtrahiert wird. Die Summe dieser Werte wird mit 2,5 multipliziert und ergibt einen Wert zwischen 0 und 100.
+ 
+Die Anwendung erreicht einen Mittelwert von \SUSm{} bei einer Standardabweichung von \SUSsd{}. Der Median liegt bei \SUSmd{}, die Einzelwerte reichen von \SUSmin{} bis \SUSmax{}. Als Vergleichsmaßstab gilt ein Wert von 68 als durchschnittlich. Siebzehn der \Nteiln{} Teilnehmenden liegen darüber, sechzehn erreichen mehr als 80 Punkte. Die beiden niedrigsten Einzelwerte liegen bei \SUSmin{} und damit nur knapp unter dem Vergleichswert. H1 ist damit gestützt.
+
+\subsection{Offene Rückmeldungen}
+\label{sec:eval_freitext}
+Von den \Nteiln{} Teilnehmenden beantworteten \Nfreitext{} mindestens eine der offenen Fragen. Die Antworten wurden nach wiederkehrenden Themen gruppiert und zusammenfassend wiedergegeben.
+ 
+\subsubsection{Positiv hervorgehobene Eigenschaften}
+Am häufigsten genannt wurde die Videoanalyse selbst. Eine Person hob hervor, dass sie Verbesserungsvorschläge in natürlicher Sprache erhalten habe und nicht nur einen Punktwert, und dass sie ihren Kick zusammen mit dem erkannten Skelett zu sehen bekommen hat. Zwei weitere Antworten hoben dasselbe aus anderer Richtung hervor, nämlich wie einfach die Anwendung die eigenen Fehler benenne. Das stützt die Entscheidung aus Abschnitt~4.12, bei schwach bewerteten Kriterien nicht nur eine Zahl anzuzeigen, sondern in Worten zu sagen, was fehlt.
+
+Mehrfach gelobt wurden außerdem die Bedienbarkeit und der schnelle Videoupload, die Speicherung im Verlauf als Möglichkeit zum Vergleich über die Zeit sowie die Vokabelfunktion. Eine Person beschrieb zudem einen Motivationseffekt der Punktebewertung, die sich für sie wie ein Spiel angefühlt habe, bei dem eine möglichst hohe Punktzahl zu erreichen sei.
+ 
+\subsubsection{Als unklar oder störend genannte Punkte}
+Genannt wurden fünf Themen, von denen vier an die Entwurfsentscheidungen aus Kapitel~4 anschließen.
+ 
+Das erste sind die Fachbegriffe. Eine Person gab an, der Begriff Chamber sei ihr unklar geblieben. Er wird in der Anwendung als Kriterienname verwendet, ohne dort erklärt zu werden.
+ 
+Das zweite ist die Modellauswahl, die drei Personen unabhängig voneinander ansprachen. Eine fragte, weshalb die Variante Lite überhaupt zu nutzen sei, wenn Heavy zur Verfügung stehe. Eine zweite wünschte sich eine Beschreibung der Varianten. Damit bestätigt die Studie die Einschätzung aus Abschnitt~4.2.1, dass die Modellauswahl eine prototypische Eigenschaft ist und in einer Endanwendung nichts zu suchen hat.
+
+Das dritte ist das Debug-Overlay im Ausgabevideo. Eine Person empfand die farbigen Zahlen in der Bildecke als verwirrend, da sie sich zu schnell änderten. Das Overlay ist als Entwicklungswerkzeug gedacht (Abschnitt~4.12) und für die Zielgruppe eher irritierend als hilfreich.
+ 
+Das vierte ist die Upload-Schaltfläche, die zwei Personen erst nach dem Scrollen fanden. Da der Upload der Einstieg in die gesamte Analyse ist, wiegt dieser Punkt trotz seiner gestalterischen Einfachheit schwer.
+ 
+Das fünfte betrifft die Richtigkeit der Bewertung und ist inhaltlich das wichtigste. Eine Person benannte drei Kriterien konkret. Die Hüftrotation sei häufig falsch bewertet worden, indem eine zu starke Rotation angezeigt und das Kriterium mit null Prozent bewertet worden sei. Die Beinstreckung falle oft schlecht aus, möglicherweise weil das Bein nicht vollständig gestreckt gewesen sei. Und beim \textit{Roundhouse Kick} melde die Anwendung mitunter ein Absacken des Knies um 30 bis 50 Zentimeter, obwohl das nicht zutreffe. Das ist die einzige Rückmeldung der Studie zur Messgenauigkeit, und sie trifft genau die drei Größen, deren Grenzen in Kapitel~6 diskutiert werden. Ohne eine unabhängige Messung bleibt offen, ob die Anwendung oder die Selbsteinschätzung danebenlag. Die Antwort zeigt aber, wo die Validierung in Abschnitt~\ref{sec:eval_technisch} ansetzen sollte.
+ 
+\subsubsection{Gewünschte Funktionen}
+Am deutlichsten formuliert wurde der Wunsch nach einer Erklärung der Bewertung. Eine Person führte als Beispiel an, dass bei einem Standbeinwert von 60 Prozent erkennbar sein sollte, weshalb dieser Wert zustande komme und was konkret zu verbessern sei.
+ 
+Das System könnte diese Frage beantworten, denn jeder Wert entsteht aus einer benannten Messgröße und zwei festgelegten Schwellen (Abschnitt~4.6). Angezeigt wird diese Information bislang nicht. Die Nachvollziehbarkeit ist also im System vorhanden, erreicht die Oberfläche jedoch nicht.
+ 
+Die übrigen Wünsche betreffen drei Bereiche: die Aufnahme, also das direkte Aufnehmen von Videos in der Anwendung sowie Beispielvideos zur richtigen Ausführung, den Umfang, also weitere Techniken, Schläge, Poomsae und ergänzende Übungen, sowie die Vokabelfunktion, für die koreanische Schreibweise, Aussprache, Karteikarten, freie Texteingabe, eine Auswahl nach Gurtgrad und eine Auflösung am Ende der Abfrage gewünscht wurden. Dass ausgerechnet die Nebenfunktion die meisten Erweiterungswünsche auf sich zieht, deutet darauf hin, dass sie stärker genutzt wurde, als bei ihrer Konzeption angenommen.
+
+\subsubsection{Anmerkungen zum Untersuchungsaufbau}
+Eine Rückmeldung betrifft den Aufbau der Studie selbst. Eine Person merkte an, dass zum Aufnehmen der Videos eine zweite Person nötig sei und die Anwendung allein nicht genutzt werden könne, dass dies jedoch auch nicht ihr Zweck sei. Die Aussage bestätigt die in Abschnitt~\ref{sec:eval_methode} genannte Begründung für die Zweiergruppen und benennt zugleich eine reale Einschränkung des Einsatzszenarios. Wer allein trainiert, kann die Anwendung ohne Stativ oder Hilfsperson nicht sinnvoll nutzen.
+
+\subsection{Zusammenfassende Einordnung}
+\label{sec:eval_einordnung}
+Alle sechs Hypothesen sind gestützt. Tabelle~\ref{tab:eval_hypergebnis} fasst das Ergebnis zusammen.
+ 
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{p{0.05\textwidth} p{0.38\textwidth} p{0.24\textwidth} p{0.14\textwidth}}
+\hline
+& \textbf{Aussage} & \textbf{Ergebnis} & \textbf{Befund} \\ \hline
+H1 & SUS über dem Vergleichswert 68 & \SUSm{}; 17 von \Nteiln{} darüber & gestützt \\
+H2 & Einfach zu bedienen & Zustimmung 89 bis 100\,\% & gestützt \\
+H3 & Bewertung nachvollziehbar & Zustimmung 89 bis 95\,\% & gestützt \\
+H4 & Vertrauen in die Bewertung & Zustimmung 79 bis 89\,\% & gestützt \\
+H5 & Als nützlich wahrgenommen & Zustimmung 89 bis 100\,\% & gestützt \\
+H6 & Nutzungsabsicht vorhanden & \Nteiln{} Prüfungsvorbereitung, 18 Weiterempfehlung & gestützt \\ \hline
+\end{tabular}
+\caption{Ergebnis der Hypothesenprüfung ($n = \Nteiln$)}
+\label{tab:eval_hypergebnis}
+\end{table}
+
+Dass sämtliche Hypothesen bestätigt werden, ist jedoch weniger aussagekräftig, als es zunächst wirkt. Die Anwendung war neu und es stand keine Vergleichsanwendung zur Verfügung, sodass sich ein Neuheitseffekt nicht ausschließen lässt. Hinzu kommt, dass die Stichprobe mit \Nteiln{} Personen klein und überwiegend aus unteren Gurtgraden zusammengesetzt ist.
+ 
+Die Freitextantworten stützen diese Einschätzung. Sie enthalten deutlich mehr konkrete Kritik, als die Zahlenwerte vermuten lassen, etwa zur Modellauswahl, zum Debug-Overlay, zur Auffindbarkeit des Uploads und zur Richtigkeit einzelner Kriterienwerte. Wo Kritik frei formuliert werden konnte, fiel sie also differenzierter aus.
+ 
+Inhaltlich lassen sich drei Ergebnisse festhalten. Erstens ist die regelbasierte Rückmeldung für die Zielgruppe verständlich. Dass die Anwendung nicht nur Punkte anzeigt, sondern bei schwachen Kriterien auch in Worten sagt, was fehlt, wurde in den Freitextantworten ausdrücklich gelobt. Zweitens reicht diese Verständlichkeit nicht bis zur Erklärung. Die Anwendung sagt, welches Kriterium wie viele Punkte erhielt, aber nicht warum. Das ist keine Grenze des Ansatzes, sondern eine Lücke in der Oberfläche, denn die nötige Information liegt im System bereits vor (Abschnitt~4.6). Drittens ist die Aufnahmesituation die praktische Schwachstelle. Dreizehn der \Nteiln{} Teilnehmenden mussten mindestens ein Video wiederholen, obwohl sie das Aufnehmen als unkompliziert empfanden.
+ 
+Was die Nutzerstudie nicht beantworten kann, ist die Frage nach der Messgenauigkeit und damit der rotationsspezifische Teil der Forschungsfrage. Der \textit{Spinning Back Kick} wurde zudem von nur 14 Personen getestet und ist damit ausgerechnet bei der schwierigsten Technik am schwächsten belegt. Die in Abschnitt~\ref{sec:ausblick} beschriebene Überprüfung gegen ein Trainerurteil bleibt dafür unverzichtbar.
+
+\section{Fazit \& Ausblick}
+ 
+\subsection{Zusammenfassung}
+Die vorliegende Arbeit hat einen Prototyp entwickelt, der eine mit dem Smartphone aufgenommene Kickausführung über markerlose \textit{Pose Estimation} mit MediaPipe auswertet. Bewertet wird anhand von sieben regelbasierten Kriterien bei \textit{Front-} und \textit{Roundhouse Kick} und anhand von fünf beim \textit{Spinning Back Kick}.
+ 
+Anders als bei Wang et al. \cite{Wang2026} gibt der Nutzer die Technik vor, statt sie automatisch erkennen zu lassen. Dadurch kommt die gesamte Verarbeitungskette ohne ein trainiertes Modell aus, von den acht ausgewerteten \textit{Landmarks} über die technikspezifische Phasenerkennung bis zur Bewertungsfunktion aus Gleichung~\ref{eq:score}. Jede Rückmeldung lässt sich damit auf eine benannte Messgröße und einen festgelegten Schwellenwert zurückführen.
+ 
+Der Prototyp wurde in einer Nutzerstudie mit \Nteiln{} Taekwondo-Trainierenden erprobt. Das Ergebnis fällt positiv aus. Die Anwendung erreicht auf der System Usability Scale \SUSm{} Punkte und liegt damit deutlich über dem Vergleichswert von 68. Bis auf eine Person hielten alle die Bewertung für nachvollziehbar, niemand hielt die Anwendung für nutzlos, und alle würden sie zur Prüfungsvorbereitung einsetzen. Sämtliche sechs Hypothesen aus Abschnitt~\ref{sec:eval_hyp} sind gestützt.
+ 
+Die Freitextantworten zeigen zwei Punkte, die über die allgemeine Akzeptanz der Anwendung hinausgehen. Positiv wurde hervorgehoben, dass die Anwendung bei schwachen Kriterien nicht nur eine Punktzahl anzeigt, sondern auch beschreibt, was bei der Ausführung verbessert werden sollte. Möglich ist dies, weil jedem Kriterium eine konkrete Messgröße und ein fester Schwellenwert zugrunde liegen.
+
+Gleichzeitig wurde deutlich, dass die Rückmeldung nicht erklärt, wie die jeweilige Punktzahl zustande kommt. Die Anwendung zeigt zwar das Kriterium und die erreichte Punktzahl an, erklärt jedoch nicht, warum dieser Wert erreicht wurde. Ein entsprechender Wunsch wurde in den Freitextantworten besonders deutlich genannt. Die dafür benötigten Informationen sind im System bereits vorhanden, werden dem Nutzer derzeit jedoch nicht angezeigt.
+ 
+Nicht beantwortet werden konnte die Frage nach der Messgenauigkeit. Ein Abgleich der Systembewertung mit dem Urteil erfahrener Trainerinnen und Trainer steht aus, und damit bleibt auch der rotationsspezifische Teil der Forschungsfrage offen. Die Aussagen zum \textit{Spinning Back Kick} in Abschnitt~\ref{sec:grenzen_dwit} sind deshalb aus der Konzeption abgeleitet und nicht gemessen.
+ 
+\subsection{Diskussion der Grenzen}
+Die Forschungsfrage dieser Arbeit fragt ausdrücklich danach, wo die Grenzen der regelbasierten Erfassung liegen, vor allem bei Techniken mit starker Körperdrehung. Die Einschränkungen, die sich bei der Umsetzung gezeigt haben, lassen sich in messtechnische und konzeptionelle Punkte gliedern.
+ 
+\subsubsection{Messtechnische Grenzen}
+Die wichtigste Einschränkung betrifft die Hüftausrichtung. Der Winkel wird aus der Verbindungslinie beider Hüften in der Draufsicht gebildet (Abschnitt~4.7). Wie genau seine Richtung bestimmt ist, hängt davon ab, wie lang diese Linie im Bild erscheint.
+ 
+Der Zusammenhang lässt sich an einem einfachen Bild verstehen. Eine lange Linie behält ihre Richtung, auch wenn einer ihrer Endpunkte etwas verrutscht. Bei einer kurzen Linie dreht derselbe Versatz die Richtung dagegen deutlich. Stehen die Hüften fast hintereinander, ist die Linie sehr kurz und ihre Richtung kaum noch zu bestimmen.
+ 
+Dazu kommt ein zweiter Effekt, der in dieselbe Richtung wirkt. Die Hüften stehen genau dann hintereinander, wenn eine die andere verdeckt. Verdeckte \textit{Landmarks} schätzt MediaPipe ohnehin ungenauer. Die Linie wird also kürzer und ihre Endpunkte gleichzeitig unsicherer.
+ 
+Betroffen ist ausgerechnet die seitliche Aufnahme, die in Abschnitt~1.3 empfohlen wird. Aus derselben Perspektive wird auch der \textit{Spinning Back Kick} mit seiner vollständigen Körperdrehung gefilmt. Wie groß der Fehler dabei tatsächlich wird, wurde in dieser Arbeit nicht gemessen. Abschnitt~\ref{sec:ausblick} beschreibt, wie sich das prüfen ließe.
+ 
+Hinzu kommt die Empfindlichkeit gegenüber einzelnen Ausreißern. Chamber-Winkel, Beinstreckung, Hüftrotation und Kniehöhe werden über ein einzelnes Extremum aus einem einzigen Bild bestimmt (Abschnitt~4.8). Ein kurzzeitig ungenauer \textit{Landmark} wirkt sich damit auf den ganzen Kriterienwert aus. Beim Standbeinwinkel und bei der Fußgeschwindigkeit wird deshalb bereits ein Median über mehrere Bilder gebildet (Abschnitt~4.3.4 und 4.11). Derselbe Schritt ließe sich auf die übrigen Kriterien übertragen.
+ 
+Eine weitere Einschränkung betrifft den \textit{Roundhouse Kick}. Die Hüftrotation wird symmetrisch um den Idealwert 90 Grad bewertet (Gleichung~\ref{eq:rotationerror}). Eine zu geringe und eine zu weit gehende Rotation erhalten deshalb bei gleichem Abstand von 90 Grad denselben Punktwert. Ein Rohwert von 70 Grad ergibt dieselbe Punktzahl wie einer von 110 Grad, obwohl es entgegengesetzte Ausführungsfehler sind. Nur der Rückmeldungstext benennt die Fehlerrichtung, die Punktzahl allein unterscheidet die beiden Fälle nicht.
+ 
+Weitere Einschränkungen wurden bereits in Kapitel~4 benannt: die ungenutzten Sichtbarkeitswerte der \textit{Landmarks} (Abschnitt~4.2.2), die uneinheitliche Normierung zwischen der körpergrößenunabhängigen Fußhöhe und der absolut gemessenen Kniehöhe (Abschnitt~4.3.3) sowie die hüftzentrierte Geschwindigkeitsmessung, die den tatsächlichen Wert unterschätzt (Abschnitt~4.11).
+ 
+\subsubsection{Konzeptionelle Grenzen}
+Das System wertet einen Kick pro Video aus. Die Kickseite wird einmal bestimmt und danach nicht mehr zurückgesetzt (Abschnitt~4.4.3). Für die Prüfungsvorbereitung, auf die der Prototyp zielt, genügt das. Eine Serie aus mehreren Kicks hintereinander lässt sich damit aber nicht auswerten.
+ 
+Alle Kriterien gehen gleich stark in den Gesamtwert ein (Abschnitt~4.10). Beim \textit{Spinning Back Kick} fällt das am ehesten auf, da nur eines von fünf Kriterien die Technikart selbst prüft. Eine belastbare Gewichtung würde einen Abgleich mit Trainerurteilen voraussetzen, der noch aussteht.
+ 
+Wird die Kickphase nicht erkannt, bricht die Auswertung früh ab und liefert für alle drei Techniken genau ein Kriterium bei 0 Prozent (Abschnitt~4.9). Wer die Erkennungsschwelle knapp verfehlt, erhält damit dieselbe Bewertung wie jemand, der überhaupt nicht getreten hat. Eine eigene Meldung statt der 0 Prozent würde diesen Fall sichtbar von einer schlecht ausgeführten Technik trennen.
+ 
+Die Schwellenwerte stammen aus der Literatur und der Trainingspraxis und sind nicht empirisch kalibriert, wie bereits in Abschnitt~1.3 angekündigt. Für die Hüftrotation von \textit{Front Kick} und \textit{Roundhouse Kick} liegen keine publizierten Referenzwerte vor, hier stützen sich die Schwellen allein auf die Trainingspraxis.
+ 
+\subsubsection{Besonderheiten beim Spinning Back Kick}
+\label{sec:grenzen_dwit}
+Wang et al. beschreiben den \textit{Roundhouse Kick} als ihre am schlechtesten erkannte Technik und führen das auf die Körperrotation und die daraus folgenden Verdeckungen zurück \cite{Wang2026}. Dabei dreht sich der Körper beim \textit{Roundhouse Kick} noch deutlich weniger als beim \textit{Spinning Back Kick}. Bei einer Technik mit vollständiger Drehung verschärfen sich diese Effekte an vier Stellen.
+ 
+Erstens fällt die aufsummierte Beckendrehung zu klein aus. Gezählt wird erst, wenn die Kickseite feststeht, also nach dem Anheben des Knies (Abschnitt~4.4.3 und 4.4.4). Die Einleitung der Drehung fehlt damit vollständig. Zusätzlich verwirft ein Filter alle Winkeländerungen über 30 Grad pro Bild (Abschnitt~4.3.4), wodurch bei schnellen Drehungen weitere Anteile herausfallen.
+ 
+Zweitens misst die Hüftausrichtung nicht die Drehung im Raum, sondern die Lage des Beins zum Becken (Abschnitt~4.7). Dreht sich eine Person weit ein, tritt aber zur Seite statt nach hinten, misst das System eine geringe Hüftausrichtung, obwohl der Körper sich stark gedreht hat. Die Rückmeldung \glqq{}zu wenig eingedreht\grqq{} beschreibt dann die Beziehung zwischen Becken und Bein und nicht die Drehung, die die ausführende Person selbst erlebt hat. Ohne zusätzliche Erklärung in der Oberfläche ist das missverständlich.
+ 
+Drittens ist eine zu weit gehende Drehung nur eingeschränkt erkennbar, da die Hüftausrichtung bei 180 Grad ihre Obergrenze erreicht. Der Rohwert kann nicht zwischen einer noch nicht weit genug und einer bereits darüber hinaus gedrehten Ausführung unterscheiden. Als Hilfsgröße dient die aufsummierte Nachdrehung. Wegen des zu kleinen Werts aus dem ersten Punkt ist sie dafür jedoch nicht belastbar genug und bestimmt deshalb nur den Rückmeldungstext, nicht die Punktzahl (Abschnitt~4.8).
+ 
+Viertens tritt bei seitlicher Aufnahme und starker Rotation die oben beschriebene Verdeckung auf. Die Hüften stehen zeitweise hintereinander, und die sichtbare Beckenbreite wird genau dort am kleinsten, wo die Bewertung am meisten auf sie angewiesen ist.
+ 
+Vorbehaltlich der noch ausstehenden Überprüfung gegen ein Trainerurteil lässt sich die Forschungsfrage damit vorläufig beantworten. Für den \textit{Front Kick} und mit Einschränkungen für den \textit{Roundhouse Kick} lassen sich die Merkmale einer korrekten Ausführung regelbasiert aus acht \textit{Landmarks} erfassen. Beim \textit{Spinning Back Kick} stößt derselbe Ansatz an klar benennbare Grenzen: Verdeckung, eine zu klein ausfallende Rotationsmessung und ein bei 180 Grad an seine Obergrenze stoßendes Winkelmaß. Diese Grenzen sind kein Zufall, sondern folgen daraus, dass mit nur acht \textit{Landmarks} und ohne Fußausrichtung gearbeitet wird.
+ 
+\subsection{Ausblick}
+\label{sec:ausblick}
+Aus den benannten Grenzen lassen sich konkrete Weiterentwicklungen ableiten. Kurzfristig umsetzbar sind vier davon.
+ 
+Zunächst sollte bei einem nicht erkannten Kick eine ausdrückliche Meldung erscheinen. Bisher fällt die Bewertung auf ein einzelnes Kriterium bei 0 Prozent, was sich leicht mit einer bewusst schlecht ausgeführten Technik verwechseln lässt. Zweitens wäre eine Gültigkeitsprüfung der projizierten Beckenbreite sinnvoll, die bei zu geringem Wert vor der Aufnahmeperspektive warnt, statt stillschweigend verrauschte Werte zu liefern. Drittens ließen sich die verbleibenden Extremwerte auf Perzentile umstellen. Und viertens sollte die Kniehöhe auf die Beinlänge normiert werden, so wie es bei der Fußhöhe des \textit{Spinning Back Kick} bereits geschieht.
+ 
+Mittelfristig sollten zwei in der Technikliteratur genannte, bislang nicht erfasste Kriterien ergänzt werden: der Pivot des Standfußes beim \textit{Roundhouse Kick} sowie die Linie Fuß-Knie-Hüfte-Schulter im Treffmoment beim Back Kick. Beide erfordern die Einbeziehung weiterer Landmarken (Ferse, Zehen), die in der vorliegenden Umsetzung bewusst ausgespart wurden.
+ 
+Der wichtigste, aber aufwendigste nächste Schritt ist die Überprüfung der berechneten Werte gegen eine unabhängige Referenz. Aus den benannten Grenzen ergeben sich dafür vier Ansatzpunkte.
+ 
+Zunächst die sichtbare Beckenbreite. Da die Hüftausrichtung aus der Verbindungslinie beider Hüften entsteht, wird der Winkel umso ungenauer, je schmaler diese Linie im Bild erscheint. Prüfen ließe sich das, indem dieselbe Ausführung aus mehreren Blickwinkeln gefilmt und die Streuung der gemessenen Hüftausrichtung der jeweils sichtbaren Beckenbreite gegenübergestellt wird. Damit wäre auch zu bestimmen, ab welcher Breite die oben vorgeschlagene Gültigkeitsprüfung greifen müsste. Zweitens die Modellvariante: Werden dieselben Videos nacheinander mit Lite, Full und Heavy ausgewertet, zeigt der Vergleich der Kriterienwerte, wie stark die Bewertung von der Modellgröße abhängt. Drittens die Rotationszählung beim \textit{Spinning Back Kick}, die Winkeländerungen über 30 Grad pro Bild verwirft und deshalb unter der tatsächlich ausgeführten Drehung bleibt. Ein Vergleich mit einer von Hand ausgezählten Drehung würde zeigen, wie groß dieser Fehler ausfällt. Und viertens der Frühabbruch: Zu prüfen wäre, wie häufig ein tatsächlich ausgeführter Kick die Erkennungsschwelle knapp verfehlt und dadurch pauschal 0 Prozent erhält.
+ 
+Für jeden dieser Punkte sind gezielt Testvideos aufzunehmen. Zusätzlich wären dieselben Videos von erfahrenen Trainerinnen und Trainern zu beurteilen, um die Systembewertung gegen ein fachliches Urteil zu halten. Verglichen werden könnte entweder die Reihenfolge, in der beide Seiten die Ausführungen einordnen, oder die Übereinstimmung in den vier Kategorien Sehr gut, Gut, Solide und Übungsbedarf.
+ 
+Erst ein solcher Abgleich kann zeigen, ob die aus der Literatur abgeleiteten Schwellenwerte im Trainingsalltag tatsächlich zwischen korrekter und fehlerhafter Ausführung trennen. Und erst dann lässt sich beantworten, ob sich die Grenze, die sich beim \textit{Spinning Back Kick} abzeichnet, mit zusätzlichen \textit{Landmarks} oder einer robusteren Rotationsmessung verschieben lässt, oder ob rotationsstarke Techniken grundsätzlich einen anderen methodischen Zugang erfordern.
+
+
+
+\appendix
+
+\includepdf[
+    pages=-,
+    fitpaper=true
+]{fragebogen.pdf}
+
+
+\begin{thebibliography}{00}
+
+% [1]
+\bibitem{Colyer2018}
+Colyer, S.~L., Evans, M., Cosker, D.~P. \& Salo, A.~I.~T.
+\textit{A Review of the Evolution of Vision-Based Motion Analysis
+and the Integration of Advanced Computer Vision Methods
+Towards Developing a Markerless System}.
+Sports Medicine -- Open, 4(1): 24, 2018.
+\href{https://doi.org/10.1186/s40798-018-0139-y}{https://doi.org/10.1186/s40798-018-0139-y}
+ 
+% [2]
+\bibitem{Edriss2025}
+Edriss, S., Romagnoli, C., Caprioli, L., Bonaiuto, V.,
+Padua, E. \& Annino, G.
+\textit{Commercial vision sensors and AI-based pose
+estimation frameworks for markerless motion analysis
+in sports and exercises: a mini review}.
+Frontiers in Physiology, 16: 1649330, 2025.
+\href{https://doi.org/10.3389/fphys.2025.1649330}{https://doi.org/10.3389/fphys.2025.1649330}
+ 
+% [3]
+\bibitem{Babouras2024}
+Babouras, A., Abdelnour, P., Fevens, T. \& Martineau, P.~A.
+\textit{Comparing novel smartphone pose estimation frameworks
+with the Kinect V2 for knee tracking during athletic stress tests}.
+International Journal of Computer Assisted Radiology and Surgery,
+19(7): 1321--1328, 2024.
+\href{https://doi.org/10.1007/s11548-024-03156-5}{https://doi.org/10.1007/s11548-024-03156-5}
+ 
+% [4]
+\bibitem{YilmazAtes2025}
+Aybüke Yılmaz, E. \& Ateş, O.
+\textit{Taekwondo kicks at the center of biomechanical
+research: A systematic review}.
+Kinesiology, 57(2): 289--307, 2025.
+\href{https://doi.org/10.26582/k.57.2.13}{https://doi.org/10.26582/k.57.2.13}
+ 
+% [5]
+\bibitem{Falco2009}
+Falco, C., Alvarez, O., Castillo, I., Estevan, I., Martos, J.,
+Mugarra, F. \& Iradi, A.
+\textit{Influence of the distance in a roundhouse kick's
+execution time and impact force in Taekwondo}.
+Journal of Biomechanics, 42(3): 242--248, 2009.
+\href{https://doi.org/10.1016/j.jbiomech.2008.10.041}{https://doi.org/10.1016/j.jbiomech.2008.10.041}
+ 
+% [6]
+\bibitem{Wang2026}
+Wang, Z., Sun, S., Liang, X. \& Chen, L.
+\textit{Recognition and explainable quantitative evaluation of
+fundamental taekwondo kicks from smartphone videos}.
+Sensors, 26(14): 4499, 2026.
+\href{https://doi.org/10.3390/s26144499}{https://doi.org/10.3390/s26144499}
+ 
+% [7]
+\bibitem{Moedinger2022}
+M.~Mödinger, A.~Woll und I.~Wagner,
+\textit{Video-based visual feedback to enhance motor learning in physical education -- a systematic review},
+German Journal of Exercise and Sport Research, Bd. 52, S. 447--460, 2022.
+doi:10.1007/s12662-021-00782-y.
+ 
+% [8]
+\bibitem{Pham2022}
+Pham, Q.-T., Nguyen, V.-A., Nguyen, T.-T., Nguyen, D.-A.,
+Nguyen, D.-G. \& Pham, D.-T.
+\textit{Automatic recognition and assessment of physical
+exercises from RGB images}.
+In: 2022 IEEE Ninth International Conference on Communications
+and Electronics (ICCE), Nha Trang, Vietnam, 349--354, 2022.
+\href{https://doi.org/10.1109/ICCE55644.2022.9852094}{https://doi.org/10.1109/ICCE55644.2022.9852094}
+ 
+% [9]
+\bibitem{ElRajab2025}
+El-Rajab, I., Klotzbier, T.~J., Korbus, H. \& Schott, N.
+\textit{Camera-based mobile applications for movement
+screening in healthy adults: a systematic review}.
+Frontiers in Sports and Active Living, 7: 1531050, 2025.
+\href{https://doi.org/10.3389/fspor.2025.1531050}{https://doi.org/10.3389/fspor.2025.1531050}
+ 
+% [10]
+\bibitem{Fong2011}
+Fong, S.~S.~M. \& Ng, G.~Y.~F.
+\textit{Does Taekwondo training improve physical fitness?}
+Physical Therapy in Sport, 12(2): 100--106, 2011.
+\href{https://doi.org/10.1016/j.ptsp.2010.07.001}{https://doi.org/10.1016/j.ptsp.2010.07.001}
+ 
+% [11]
+\bibitem{WTKyorugi2026}
+World Taekwondo,
+\textit{Competition Rules \& Interpretation, in force as of June 1, 2026},
+Seoul, 2026.
+\url{https://www.worldtaekwondo.org/}
+ 
+% [12]
+\bibitem{WTPoomsae2024}
+World Taekwondo,
+\textit{Poomsae Competition Rules \& Interpretation,
+in force as of September 30, 2024},
+Seoul, 2024.
+\url{https://www.worldtaekwondo.org/att_file/documents/Poomsae_Competition_Rules_and_Interpretation_(In_force_as_of_September_30_2024).pdf}
+ 
+% [13]
+\bibitem{WikiBild2026}
+Wikipedia,
+\textit{Taekwondo-Wettkampf Olympische Sommerspiele 2016},
+Online verfügbar unter:
+\url{https://de.wikipedia.org/wiki/Taekwondo#/media/Datei:Milad_Kharchegani_at_the_2016_Summer_Olympics.jpg},
+Lizenz: CC BY 4.0,
+abgerufen am 19. März 2026.
+ 
+% [14]
+\bibitem{KukkiwonRules2018}
+Kukkiwon,
+\textit{The Rules of Taekwondo Promotion Test},
+Seoul, 2018.
+\url{https://www.kukkiwon.or.kr/eng/board/read?boardManagementNo=51&boardNo=1398&menuLevel=2&menuNo=97}
+ 
+% [15]
+\bibitem{wasik2016}
+Wąsik, J.; Góra, T.
+\textit{The Kinematics of Taekwon-Do Back Kick}.
+\textit{Baltic Journal of Health and Physical Activity} \textbf{2016}, 8(4), 49--55.
+\href{https://doi.org/10.29359/BJHPA.08.4.06}{https://doi.org/10.29359/BJHPA.08.4.06}
+ 
+% [16]
+\bibitem{Gavagan2017}
+Gavagan, C.~J. \& Sayers, M.~G.~L.
+\textit{A biomechanical analysis of the roundhouse kicking technique
+of expert practitioners: A comparison between the martial arts
+disciplines of Muay Thai, Karate, and Taekwondo}.
+PLoS One, 12(8): e0182645, 2017.
+\href{https://doi.org/10.1371/journal.pone.0182645}{https://doi.org/10.1371/journal.pone.0182645}
+ 
+% [17]
+\bibitem{Gulia2022}
+S.~Gulia und D.~Shaw,
+\textit{Two-dimensional biomechanical analysis of front kick and front toe kick of female national level taekwondo players},
+International Journal of Physical Education, Sports and Health, Bd. 9, Nr. 5, S. 130--134, 2022.
+\href{https://www.semanticscholar.org/paper/Two-dimensional-biomechanical-analysis-of-front-and-Gulia-Scholar/5c5a35662600f7d4c74289a1c994e5161f38b25e\#extracted}{\url{https://www.semanticscholar.org/paper/Two-dimensional-biomechanical-analysis-of-front-and-Gulia-Scholar/5c5a35662600f7d4c74289a1c994e5161f38b25e#extracted}}
+ 
+% [18]
+\bibitem{TaekwonWikiaDol}
+TaeKwonWikia,
+\textit{Dollyeo-chagi},
+Online verfügbar unter:
+\url{https://taekwonwikia.com.br/dollyeo-chagi/},
+abgerufen am 16.08.2026.
+ 
+% [19]
+\bibitem{pedzich2006}
+Pędzich, W.; Mastalerz, A.; Urbanik, C.
+\textit{The Comparison of the Dynamics of Selected Leg Strokes in Taekwondo WTF}.
+\textit{Acta of Bioengineering and Biomechanics} \textbf{2006}, 8(1), 83--90.
+\href{https://actabio.pwr.edu.pl/fcp/0GBUKOQtTKlQhbx08SlkTUARAUWRuHQwFDBoIVURNWHVaFVZpCFghUHcKVigEQUw/302/public/publikacje/v8-1-2006/8.pdf}{https://actabio.pwr.edu.pl/fcp/0GBUKOQtTKlQhbx08SlkTUARAUWRuHQwFDBoIVURNWHVaFVZpCFghUHcKVigEQUw/302/public/publikacje/v8-1-2006/8.pdf}
+ 
+% [20]
+\bibitem{TaekwonWikiaDwi}
+TaeKwonWikia,
+\textit{Dwi-chagi},
+Online verfügbar unter:
+\url{https://taekwonwikia.com.br/dwi-chagi/},
+abgerufen am 16.08.2026.
+ 
+% [21]
+\bibitem{Thomas2026}
+Thomas, A., Tucker, C.~B., Lunn, D.~E., Cooke, M.~J.,
+Nicholson, G. \& Walker, J.
+\textit{Lights, Cameras, Action -- The influence of lighting
+and camera position on walking and running kinematic measurements
+using Theia3D markerless motion capture}.
+Journal of Biomechanics, 203: 113343, 2026.
+\href{https://doi.org/10.1016/j.jbiomech.2026.113343}{https://doi.org/10.1016/j.jbiomech.2026.113343}
+ 
+% [22]
+\bibitem{MediaPipeTasks}
+Google LLC,
+\textit{MediaPipe Tasks Overview},
+Online verfügbar unter:
+\url{https://developers.google.com/mediapipe/solutions},
+abgerufen am 16. März 2026.
+ 
+% [23]
+\bibitem{Lugaresi2019}
+C.~Lugaresi, J.~Tang, H.~Nash, C.~McClanahan, E.~Uboweja, M.~Hays, F.~Zhang,
+C.-L.~Chang, M.~Yong, J.~Lee, W.-T.~Chang, W.~Hua, M.~Georg und M.~Grundmann,
+\textit{MediaPipe: A Framework for Perceiving and Processing Reality},
+Third Workshop on Computer Vision for AR/VR at IEEE CVPR, 2019.
+Online verfügbar unter:
+\url{https://mixedreality.cs.cornell.edu/s/NewTitle_May1_MediaPipe_CVPR_CV4ARVR_Workshop_2019.pdf}.
+ 
+% [24]
+\bibitem{Bazarevsky2020}
+Bazarevsky, V., Grishchenko, I., Raveendran, K., Zhu, T., Zhang, F.
+\& Grundmann, M.
+\textit{BlazePose: On-device Real-time Body Pose Tracking}.
+arXiv preprint arXiv:2006.10204, 2020.
+\href{https://doi.org/10.48550/arXiv.2006.10204}{https://doi.org/10.48550/arXiv.2006.10204}
+ 
+% [25]
+\bibitem{mediapipepose}
+Google LLC,
+\textit{Mediapipe Pose Landmarks},
+Online verfügbar unter:
+\url{https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker?hl=de},
+abgerufen am 14. Mai 2026.
+ 
+% [26]
+\bibitem{mobilenetv2}
+Sandler, M., Howard, A., Zhu, M., Zhmoginov, A., Chen, L.-C.
+\textit{MobileNetV2: Inverted Residuals and Linear Bottlenecks}.
+arXiv preprint arXiv:1801.04381,
+2019.
+\url{https://arxiv.org/abs/1801.04381}
+ 
+% [27]
+\bibitem{Tharatipyakul2024}
+Tharatipyakul, A., Srikaewsiew, T. \& Pongnumkul, S.
+\textit{Deep learning-based human body pose estimation in providing
+feedback for physical movement: A review}.
+Heliyon, 10(17): e36589, 2024.
+\href{https://doi.org/10.1016/j.heliyon.2024.e36589}{https://doi.org/10.1016/j.heliyon.2024.e36589}
+ 
+% [28]
+\bibitem{Kim2011}
+Kim, Y. K., Kim, Y. H., \& Im, S. J.
+\textit{Inter-joint coordination in producing kicking velocity of taekwondo kicks}.
+Journal of Sports Science and Medicine,
+2011, 10(1), 31--38.
+PMID: 24149292; PMCID: PMC3737890.
+\url{https://pmc.ncbi.nlm.nih.gov/articles/PMC3737890/}
+ 
+% [29]
+\bibitem{Lee2005}
+Lee, C.-H., Lee, Y.-J. \& Cheong, C.-C.
+\textit{A Kinematical Analysis of the Taekwondo Apchagi}.
+In: Proceedings of the 23rd International Symposium on Biomechanics in Sports (ISBS), Beijing, China, 595--597, 2005.
+
+\bibitem{Echeverria2021}
+Echeverria, J. \& Santos, O.~C.
+\textit{Toward Modeling Psychomotor Performance in Karate Combats
+Using Computer Vision Pose Estimation}.
+Sensors, 21(24): 8378, 2021.
+\href{https://doi.org/10.3390/s21248378}{https://doi.org/10.3390/s21248378}
+
+\bibitem{OpenPoseLicense}
+Carnegie Mellon University,
+\textit{OpenPose: Academic or Non-Profit Organization Noncommercial
+Research Use Only License},
+Online verfügbar unter:
+\url{https://github.com/CMU-Perceptual-Computing-Lab/openpose/blob/master/LICENSE},
+abgerufen am 6. September 2026.
+
+\bibitem{MediaPipeLicense}
+Google LLC,
+\textit{MediaPipe, Apache License Version 2.0},
+Online verfügbar unter:
+\url{https://github.com/google-ai-edge/mediapipe/blob/master/LICENSE},
+abgerufen am 6. September 2026.
+
+\end{thebibliography}
+    
+\end{document}
