@@ -13,16 +13,17 @@ class ApChagi:
     # --- Detection ---
     CHAMBER_KNEE_MAX = 100
     CHAMBER_HIP_MAX = 120
-    KICK_KNEE_MIN = 150
+    KICK_KNEE_MIN = 131
     IDLE_KNEE_MIN = 150
     IDLE_HIP_MIN = 150
     KNEE_RETURN_MIN = 80
     LEG_UP_MIN = 45
     LIFT_THRESHHOLD_M = 0.05
     BASELINE_WINDOW_FRAMES = 10
+    JUMP_FILTER_DEG = 60
 
     # --- Quality ---
-    CHAMBER_QUALITY_KNEE_MAX = 60
+    CHAMBER_QUALITY_KNEE_MAX = 71
     THIGH_ELEVATION_FAIL = 50
     THIGH_ELEVATION_IDEAL = 90
     KNEE_DROP_TOLERANCE_M = 0.15
@@ -68,6 +69,7 @@ class ApChagi:
         # hip rotation/alignment
         self.hip_alignment = 0.0
         self.hip_alignment_at_impact = 0.0
+        self.prev_alignment = None
 
         # fps
         self.fps = 30
@@ -102,7 +104,10 @@ class ApChagi:
         self.standing_knee_angle, _ = leg_angles(wl, standing_side)
 
         raw = hip_kick_angle(wl, kicking_side)
-        self.hip_alignment = min(raw, 180 - raw)
+        if self.prev_alignment is not None and abs(raw - self.prev_alignment) > self.JUMP_FILTER_DEG:
+            raw = self.prev_alignment
+        self.hip_alignment = raw
+        self.prev_alignment = raw
 
         # check y position of kicking knee
         kicking_knee_idx = L_KNEE if kicking_side == "left" else R_KNEE
@@ -239,7 +244,7 @@ class ApChagi:
 
         results.append(self._graded(
                     "knee_extension", "Beinstreckung", self.max_knee_in_kick,
-                    fail_at=130, ideal_at=160,
+                    fail_at=131, ideal_at=170,
                     ok="Bein voll gestreckt.",
                     fail="Bein nicht vollständig gestreckt.",
                 ))

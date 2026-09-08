@@ -12,11 +12,11 @@ class BandalChagi:
     NAME = "bandal_chagi"
 
     # --- Detection ---
-    CHAMBER_KNEE_MAX = 130
-    CHAMBER_HIP_MAX = 130
-    KICK_KNEE_MIN = 150 
-    IDLE_KNEE_MIN = 160
-    IDLE_HIP_MIN = 160
+    CHAMBER_KNEE_MAX = 100
+    CHAMBER_HIP_MAX = 120
+    KICK_KNEE_MIN = 131 
+    IDLE_KNEE_MIN = 150
+    IDLE_HIP_MIN = 150
     KNEE_RETURN_MIN = 80
     LEG_UP_MIN = 45
     LIFT_THRESHHOLD_M = 0.05
@@ -27,7 +27,7 @@ class BandalChagi:
     KNEE_LATERAL_MIN = 30
 
     # --- Quality ---
-    CHAMBER_QUALITY_KNEE_MAX = 90
+    CHAMBER_QUALITY_KNEE_MAX = 71
     THIGH_ELEVATION_FAIL = 50
     THIGH_ELEVATION_IDEAL = 90
     KNEE_DROP_TOLERANCE_M = 0.15
@@ -254,7 +254,7 @@ class BandalChagi:
 
         results.append(self._graded(
                             "knee_extension", "Beinstreckung", self.max_knee_in_kick,
-                            fail_at=130, ideal_at=160,
+                            fail_at=131, ideal_at=170,
                             ok="Bein voll gestreckt.",
                             fail="Bein nicht vollständig gestreckt.",
                         ))

@@ -13,7 +13,7 @@ class DwitChagi:
     NAME = "dwit_chagi"
 
     # --- Detection ---
-    CHAMBER_KNEE_MAX = 90
+    CHAMBER_KNEE_MAX = 100
     CHAMBER_HIP_MAX = 150
     KICK_KNEE_MIN = 100
     IDLE_KNEE_MIN = 160
@@ -28,11 +28,11 @@ class DwitChagi:
     JUMP_FILTER_DEG = 60   # größerer Sprung in hip_alignment = Flip -> verwerfen
 
     # --- Quality ---
-    CHAMBER_QUALITY_KNEE_MAX = 55
+    CHAMBER_QUALITY_KNEE_MAX = 71
     KNEE_DROP_TOLERANCE_M = 0.15
     STANDING_KNEE_MAX = 165
     BODY_ROTATION_FAIL = 110   # Ausrichtung beim Treffer (~180 = Rücken zum Ziel)
-    BODY_ROTATION_IDEAL = 170
+    BODY_ROTATION_IDEAL = 180
     OVER_ROTATION_FAIL = 60    # ab hier gilt die Drehung als durchgedreht
     FOOT_GAP_FAIL = 0.40
     FOOT_GAP_IDEAL = 0.15
@@ -315,17 +315,9 @@ class DwitChagi:
 
     def evaluate(self):
         results = []
-
-        results.append(self._graded(
-            "chamber_depth", "Chamber Winkel", self.min_knee_in_chamber,
-            fail_at=self.CHAMBER_KNEE_MAX, ideal_at=self.CHAMBER_QUALITY_KNEE_MAX,
-            ok="Knie angezogen.",
-            fail="Knie nicht genug angezogen.",
-        ))
-
         results.append(self._graded(
             "knee_extension", "Beinstreckung", self.max_knee_in_kick,
-            fail_at=90, ideal_at=140,
+            fail_at=131, ideal_at=170,
             ok="Bein gut gestreckt.",
             fail="Bein nicht weit genug gestreckt — beim Dwit Chagi schiebt das Bein gerade nach hinten durch.",
         ))
@@ -337,6 +329,13 @@ class DwitChagi:
             rotation_fail = "Zu weit durchgedreht. Das ist eher ein Spinning Side Kick"
         else:
             rotation_fail = "Zu wenig eingedreht — beim Treffer muss der Rücken zum Ziel zeigen."
+
+        results.append(self._graded(
+                    "chamber_depth", "Chamber Winkel", self.min_knee_in_chamber,
+                    fail_at=self.CHAMBER_KNEE_MAX, ideal_at=self.CHAMBER_QUALITY_KNEE_MAX,
+                    ok="Knie angezogen.",
+                    fail="Knie nicht genug angezogen.",
+                ))
 
         results.append(self._graded(
             "body_rotation", "Körperdrehung", self.hip_alignment_at_impact,
